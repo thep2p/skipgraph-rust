@@ -1,4 +1,3 @@
-use crate::add;
 use crate::core::{Address, Identifier, MembershipVector};
 
 /// Identity is an immutable struct that represents a node's identity in the network (ID, MembershipVector, Address).
@@ -9,7 +8,7 @@ pub struct Identity<T> {
     address: T,
 }
 
-impl<T> Identity<T> where {
+impl<T> Identity<T> where T : Copy {
     /// Create a new Identity
     pub fn new(id: &Identifier, mem_vec: &MembershipVector, address: T) -> Identity<T> {
         Identity {
@@ -31,7 +30,7 @@ impl<T> Identity<T> where {
 
     /// Get the address of the node
     pub fn address(&self) -> T {
-        &self.address
+        self.address
     }
 }
 
