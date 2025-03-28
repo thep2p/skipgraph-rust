@@ -1,3 +1,4 @@
+use std::fmt::{Debug, Formatter};
 use crate::core::lookup::lookup_table::{Level, LookupTable};
 use crate::core::model;
 use crate::core::model::direction::Direction;
@@ -6,7 +7,7 @@ use anyhow::anyhow;
 
 /// It is a 2D array of Identity, where the first dimension is the level and the second dimension is the direction.
 /// Caution: lookup table by itself is not thread-safe, should be used with an Arc<Mutex<LookupTable>>.
-struct ArrayLookupTable<T> where T : Copy {
+pub struct ArrayLookupTable<T> where T : Copy {
     left: [Option<Identity<T>>; model::IDENTIFIER_SIZE_BYTES],
     right: [Option<Identity<T>>; model::IDENTIFIER_SIZE_BYTES],
 }
@@ -18,6 +19,24 @@ impl<T> ArrayLookupTable<T> where T : Copy {
             left: [None; model::IDENTIFIER_SIZE_BYTES],
             right: [None; model::IDENTIFIER_SIZE_BYTES],
         }
+    }
+}
+
+impl<T> PartialEq for ArrayLookupTable<T>
+where
+    T: Copy,
+{
+    fn eq(&self, other: &Self) -> bool {
+        todo!()
+    }
+}
+
+impl<T> Debug for ArrayLookupTable<T>
+where
+    T: Copy,
+{
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        todo!()
     }
 }
 
