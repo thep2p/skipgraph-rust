@@ -1,3 +1,5 @@
+use std::fmt::Debug;
+use anyhow::Debug;
 use crate::core::model::direction::Direction;
 use crate::core::model::identity::Identity;
 
@@ -5,7 +7,7 @@ use crate::core::model::identity::Identity;
 pub type Level = usize;
 
 /// LookupTable is the core view of Skip Graph node towards the network.
-pub trait LookupTable<T> {
+pub trait LookupTable<T> : PartialEq + Debug {
     /// Update the entry at the given level and direction.
     fn update_entry(
         &mut self,
