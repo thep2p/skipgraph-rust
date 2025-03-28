@@ -1,14 +1,17 @@
-use crate::core::{Address, Identifier, IdentifierSearchRequest, IdentifierSearchResult, LookupTable, MembershipVector, Node};
-use crate::local::node::LocalNode;
+use crate::core::{
+    Identifier, IdentifierSearchRequest, IdentifierSearchResult, LookupTable,
+    MembershipVector, Node,
+};
 
-struct BaseNode {
+/// LocalNode is a struct that represents a single node in the local implementation of the skip graph.
+struct LocalNode {
     id: Identifier,
     mem_vec: MembershipVector,
-    lt : dyn LookupTable<&BaseNode>,
+    lt: dyn LookupTable<&LocalNode>,
 }
 
-impl<'a> Node for BaseNode {
-    type Address = &'a BaseNode;
+impl<'a> Node for LocalNode {
+    type Address = &'a LocalNode;
 
     fn get_identifier(&self) -> &Identifier {
         &self.id
@@ -22,11 +25,17 @@ impl<'a> Node for BaseNode {
         &self
     }
 
-    fn search_by_id(&self, req: &IdentifierSearchRequest) -> anyhow::Result<IdentifierSearchResult<Self::Address>> {
+    fn search_by_id(
+        &self,
+        req: &IdentifierSearchRequest,
+    ) -> anyhow::Result<IdentifierSearchResult<Self::Address>> {
         todo!()
     }
 
-    fn search_by_mem_vec(&self, req: &IdentifierSearchRequest) -> anyhow::Result<IdentifierSearchResult<Self::Address>> {
+    fn search_by_mem_vec(
+        &self,
+        req: &IdentifierSearchRequest,
+    ) -> anyhow::Result<IdentifierSearchResult<Self::Address>> {
         todo!()
     }
 
