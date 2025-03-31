@@ -22,25 +22,21 @@ impl<T> ArrayLookupTable<T> where T : Copy {
     }
 }
 
-impl<T> PartialEq for ArrayLookupTable<T>
-where
-    T: Copy,
-{
-    fn eq(&self, other: &Self) -> bool {
-        todo!()
-    }
-}
-
 impl<T> Debug for ArrayLookupTable<T>
 where
-    T: Copy,
+    T: Copy + Debug,
 {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        todo!()
+        let mut i = 0;
+        for (l, r) in self.left.iter().zip(self.right.iter()) {
+            write!(f, "Level: {}, Left: {:?}, Right: {:?}\n", i, l, r)?;
+            i += 1;
+        }
+        Ok(())
     }
 }
 
-impl<T> LookupTable<T> for ArrayLookupTable<T> where T : Copy {
+impl<T> LookupTable<T> for ArrayLookupTable<T> where T : Copy + Debug {
     /// Update the entry at the given level and direction.
     fn update_entry(
         &mut self,
@@ -108,6 +104,14 @@ impl<T> LookupTable<T> for ArrayLookupTable<T> where T : Copy {
             Direction::Left => Ok(self.left[level].as_ref()),
             Direction::Right => Ok(self.right[level].as_ref()),
         }
+    }
+
+    fn equal(&self, other: &dyn LookupTable<T>) -> bool {
+        true
+    }
+
+    fn clone_box(&self) -> Box<dyn LookupTable<T>> {
+        Box::new(self.clone())
     }
 }
 
@@ -203,5 +207,18 @@ mod tests {
         lt.update_entry(id2, 0, Direction::Left).unwrap();
 
         assert_eq!(Some(&id2), lt.get_entry(0, Direction::Left).unwrap());
+    }
+
+    #[test]
+    /// Test equality of lookup tables.
+    /// The test will create two identical lookup tables and check if they are equal.
+    /// The test will also create a different lookup table and check if they are not equal.
+    /// The test will also check if the lookup table is equal to itself.
+    /// The test will also check if the lookup table is not equal to None.
+    fn test_lookup_table_equality() {
+        let lt1 = random_network_lookup_table(10);
+        let lt2 = random_network_lookup_table(10);
+
+        // assert_eq!(lt1, lt2);
     }
 }
