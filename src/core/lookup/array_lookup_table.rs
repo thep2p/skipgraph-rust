@@ -1,30 +1,34 @@
-use std::fmt::{Debug, Formatter};
 use crate::core::lookup::lookup_table::{Level, LookupTable};
 use crate::core::model;
 use crate::core::model::direction::Direction;
 use crate::core::model::identity::Identity;
 use anyhow::anyhow;
+use std::fmt::{Debug, Formatter};
 
 /// It is a 2D array of Identity, where the first dimension is the level and the second dimension is the direction.
 /// Caution: lookup table by itself is not thread-safe, should be used with an Arc<Mutex<LookupTable>>.
-pub struct ArrayLookupTable<T> where T : Copy {
-    left: [Option<Identity<T>>; model::IDENTIFIER_SIZE_BYTES],
-    right: [Option<Identity<T>>; model::IDENTIFIER_SIZE_BYTES],
+#[derive(Clone)]
+pub struct ArrayLookupTable<T: Clone> {
+    left: Vec<Option<Identity<T>>>,
+    right: Vec<Option<Identity<T>>>,
 }
 
-impl<T> ArrayLookupTable<T> where T : Copy {
+impl<T> ArrayLookupTable<T>
+where
+    T: Clone,
+{
     /// Create a new empty LookupTable instance.
     pub fn new() -> ArrayLookupTable<T> {
         ArrayLookupTable {
-            left: [None; model::IDENTIFIER_SIZE_BYTES],
-            right: [None; model::IDENTIFIER_SIZE_BYTES],
+            left: vec![None; model::IDENTIFIER_SIZE_BYTES],
+            right: vec![None; model::IDENTIFIER_SIZE_BYTES],
         }
     }
 }
 
 impl<T> Debug for ArrayLookupTable<T>
 where
-    T: Copy + Debug,
+    T: Clone + Debug,
 {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         let mut i = 0;
@@ -36,7 +40,10 @@ where
     }
 }
 
-impl<T> LookupTable<T> for ArrayLookupTable<T> where T : Copy + Debug {
+impl<T> LookupTable<T> for ArrayLookupTable<T>
+where
+    T: Clone + Debug + 'static,
+{
     /// Update the entry at the given level and direction.
     fn update_entry(
         &mut self,
@@ -117,14 +124,14 @@ impl<T> LookupTable<T> for ArrayLookupTable<T> where T : Copy + Debug {
 
 #[cfg(test)]
 mod tests {
-    use crate::core::Address;
     use super::*;
     use crate::core::testutil::fixtures::*;
+    use crate::core::Address;
 
     #[test]
     /// A new lookup table should be empty.
     fn test_lookup_table_empty() {
-        let lt : ArrayLookupTable<Address> = ArrayLookupTable::new();
+        let lt: ArrayLookupTable<Address> = ArrayLookupTable::new();
         for i in 0..model::IDENTIFIER_SIZE_BYTES {
             assert_eq!(None, lt.get_entry(i, Direction::Left).unwrap());
             assert_eq!(None, lt.get_entry(i, Direction::Right).unwrap());
