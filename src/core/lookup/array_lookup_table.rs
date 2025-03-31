@@ -114,11 +114,20 @@ where
     }
 
     fn equal(&self, other: &dyn LookupTable<T>) -> bool {
-        true
+        todo!()
     }
 
     fn clone_box(&self) -> Box<dyn LookupTable<T>> {
         Box::new(self.clone())
+    }
+}
+
+impl<T> PartialEq for ArrayLookupTable<T>
+where
+    T: Clone + Debug + 'static,
+{
+    fn eq(&self, other: &Self) -> bool {
+        self.equal(other)
     }
 }
 
@@ -226,6 +235,6 @@ mod tests {
         let lt1 = random_network_lookup_table(10);
         let lt2 = random_network_lookup_table(10);
 
-        // assert_eq!(lt1, lt2);
+        assert_eq!(lt1, lt2);
     }
 }
