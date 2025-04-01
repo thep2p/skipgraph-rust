@@ -6,7 +6,7 @@ use std::fmt::Debug;
 pub type Level = usize;
 
 /// LookupTable is the core view of Skip Graph node towards the network.
-pub trait LookupTable<T>: Debug {
+pub trait LookupTable<T> {
     /// Update the entry at the given level and direction.
     fn update_entry(
         &mut self,
@@ -25,12 +25,12 @@ pub trait LookupTable<T>: Debug {
         -> anyhow::Result<Option<&Identity<T>>>;
 
     /// Dynamically compares the lookup table with another for equality.
-    fn equal(&self, other : &dyn LookupTable<T>) -> bool;
+    fn equal(&self, other: &dyn LookupTable<T>) -> bool;
 
     fn clone_box(&self) -> Box<dyn LookupTable<T>>;
 }
 
-impl <T, U> PartialEq<U> for dyn LookupTable<T>
+impl<T, U> PartialEq<U> for dyn LookupTable<T>
 where
     T: Debug,
     U: LookupTable<T>,
@@ -45,5 +45,3 @@ impl<T> Clone for Box<dyn LookupTable<T>> {
         self.clone_box()
     }
 }
-
-
