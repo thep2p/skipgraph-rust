@@ -42,7 +42,7 @@ where
 
 impl<T> LookupTable<T> for ArrayLookupTable<T>
 where
-    T: Clone + Debug + 'static,
+    T: Clone + Debug + 'static + PartialEq,
 {
     /// Update the entry at the given level and direction.
     fn update_entry(
@@ -124,10 +124,20 @@ where
 
 impl<T> PartialEq for ArrayLookupTable<T>
 where
-    T: Clone + Debug + 'static,
+    T: Clone + Debug + 'static + PartialEq,
 {
     fn eq(&self, other: &Self) -> bool {
-        self.equal(other)
+        for (l, r) in self.left.iter().zip(other.left.iter()) {
+            if l != r {
+                return false;
+            }
+        }
+        for (l, r) in self.right.iter().zip(other.right.iter()) {
+            if l != r {
+                return false;
+            }
+        }
+        true
     }
 }
 
@@ -235,6 +245,8 @@ mod tests {
         let lt1 = random_network_lookup_table(10);
         let lt2 = random_network_lookup_table(10);
 
-        assert_eq!(lt1, lt2);
+        assert_ne!(lt1, lt2); // check if two random lookup tables are not equal
+        assert_eq!(lt1, lt1); // check if the lookup table is equal to itself
+        assert_eq!(lt2, lt2); // check if the lookup table is equal to itself
     }
 }
