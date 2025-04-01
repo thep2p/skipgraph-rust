@@ -113,12 +113,28 @@ where
         }
     }
 
+    /// Dynamically compares the lookup table with another for equality.
+    /// This is a deep comparison of the entries in the table.
+    /// Returns true if the entries are equal, false otherwise.
     fn equal(&self, other: &dyn LookupTable<T>) -> bool {
+        // iterates over the levels and compares the entries in the left and right directions
         for l in 0..model::IDENTIFIER_SIZE_BYTES {
-            if self.left[l].as_ref() != other.get_entry(l, Direction::Left).unwrap() {
+            // Check if the left entry is equal
+            if let Ok(other_entry) = other.get_entry(l, Direction::Left) {
+                if self.left[l].as_ref() != other_entry {
+                    return false;
+                }
+            } else {
+                // if retrieving the entry fails on the other table, return false
                 return false;
             }
-            if self.right[l].as_ref() != other.get_entry(l, Direction::Right).unwrap() {
+
+            if let Ok(other_entry) = other.get_entry(l, Direction::Right) {
+                if self.right[l].as_ref() != other_entry {
+                    return false;
+                }
+            } else {
+                // if retrieving the entry fails on the other table, return false
                 return false;
             }
         }
