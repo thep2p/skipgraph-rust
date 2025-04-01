@@ -114,7 +114,15 @@ where
     }
 
     fn equal(&self, other: &dyn LookupTable<T>) -> bool {
-        todo!()
+        for l in 0..model::IDENTIFIER_SIZE_BYTES {
+            if self.left[l].as_ref() != other.get_entry(l, Direction::Left).unwrap() {
+                return false;
+            }
+            if self.right[l].as_ref() != other.get_entry(l, Direction::Right).unwrap() {
+                return false;
+            }
+        }
+        true
     }
 
     fn clone_box(&self) -> Box<dyn LookupTable<T>> {
@@ -127,23 +135,12 @@ where
     T: Clone + Debug + 'static + PartialEq,
 {
     fn eq(&self, other: &Self) -> bool {
-        for (l, r) in self.left.iter().zip(other.left.iter()) {
-            if l != r {
-                return false;
-            }
-        }
-        for (l, r) in self.right.iter().zip(other.right.iter()) {
-            if l != r {
-                return false;
-            }
-        }
-        true
+        self.equal(other)
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use crate::core::Address;
     use super::*;
     use crate::core::testutil::fixtures::*;
     use crate::core::Address;
