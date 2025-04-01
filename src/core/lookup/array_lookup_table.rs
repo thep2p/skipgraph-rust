@@ -143,6 +143,7 @@ where
 
 #[cfg(test)]
 mod tests {
+    use crate::core::Address;
     use super::*;
     use crate::core::testutil::fixtures::*;
     use crate::core::Address;
