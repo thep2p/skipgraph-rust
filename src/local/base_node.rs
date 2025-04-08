@@ -7,7 +7,6 @@ use std::fmt::Formatter;
 use std::sync::Arc;
 
 /// LocalNode is a struct that represents a single node in the local implementation of the skip graph.
-
 struct LocalNode {
     id: Identifier,
     mem_vec: MembershipVector,
