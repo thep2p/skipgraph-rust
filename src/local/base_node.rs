@@ -30,19 +30,19 @@ impl Node for LocalNode {
 
     fn search_by_id(
         &self,
-        req: &IdentifierSearchRequest,
+        _req: &IdentifierSearchRequest,
     ) -> anyhow::Result<IdentifierSearchResult<Self::Address>> {
         todo!()
     }
 
     fn search_by_mem_vec(
         &self,
-        req: &IdentifierSearchRequest,
+        _req: &IdentifierSearchRequest,
     ) -> anyhow::Result<IdentifierSearchResult<Self::Address>> {
         todo!()
     }
 
-    fn join(&self, introducer: Self::Address) -> anyhow::Result<()> {
+    fn join(&self, _introducer: Self::Address) -> anyhow::Result<()> {
         todo!()
     }
 }
