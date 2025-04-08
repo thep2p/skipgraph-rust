@@ -25,7 +25,7 @@ pub fn random_membership_vector() -> MembershipVector {
 
 /// Generate a random port
 pub fn random_port() -> u16 {
-    rand::thread_rng().gen_range(1024..=65535)
+    rand::rng().random_range(1024..=65535)
 }
 
 /// Generate a random address
