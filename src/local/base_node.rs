@@ -70,7 +70,7 @@ impl Clone for LocalNode {
     fn clone(&self) -> Self {
         LocalNode {
             id: self.id.clone(),
-            mem_vec: self.mem_vec.clone(),
+            mem_vec: self.mem_vec,
             lt: self.lt.clone(),
         }
     }

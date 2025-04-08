@@ -1,8 +1,15 @@
-use crate::core::model::identity::Identity;
-use crate::core::testutil::random::random_hex_str;
-use crate::core::{model, Address, ArrayLookupTable, Identifier, LookupTable, MembershipVector};
-use rand::Rng;
-use crate::core::model::direction::Direction;
+#[cfg(test)]
+mod test_imports {
+    pub use crate::core::model::direction::Direction;
+    pub use crate::core::model::identity::Identity;
+    pub use crate::core::testutil::random::random_hex_str;
+    pub use crate::core::{model, Address, ArrayLookupTable, Identifier, LookupTable, MembershipVector};
+    pub use rand::Rng;
+}
+
+#[cfg(test)]
+use test_imports::*;
+
 
 /// Generate a random identifier.
 #[cfg(test)]
