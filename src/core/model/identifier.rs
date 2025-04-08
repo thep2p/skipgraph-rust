@@ -1,7 +1,7 @@
 use crate::core::model;
 use crate::core::model::identifier::ComparisonResult::{CompareEqual, CompareGreater, CompareLess};
 use crate::core::model::IDENTIFIER_SIZE_BYTES;
-use anyhow::{anyhow, Context};
+use anyhow::{anyhow};
 use std::fmt;
 use std::fmt::{Display, Formatter};
 
@@ -16,7 +16,6 @@ pub enum ComparisonResult {
     CompareEqual,
     CompareLess,
 }
-
 
 /// ComparisonContext represents the context of a comparison between two identifiers.
 /// It contains the result of the comparison, the left and right identifiers, and the index of the differing byte.
