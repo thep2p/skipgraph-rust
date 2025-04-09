@@ -4,17 +4,17 @@ use crate::core::{
 };
 use std::fmt;
 use std::fmt::Formatter;
-use std::sync::Arc;
+use std::rc::Rc;
 
 /// LocalNode is a struct that represents a single node in the local implementation of the skip graph.
 struct LocalNode {
     id: Identifier,
     mem_vec: MembershipVector,
-    lt: Box<dyn LookupTable<Arc<LocalNode>>>,
+    lt: Box<dyn LookupTable<Rc<LocalNode>>>,
 }
 
 impl Node for LocalNode {
-    type Address = Arc<LocalNode>;
+    type Address = Rc<LocalNode>;
 
     fn get_identifier(&self) -> &Identifier {
         &self.id
@@ -25,7 +25,7 @@ impl Node for LocalNode {
     }
 
     fn get_address(&self) -> Self::Address {
-        Arc::new(self.clone())
+        Rc::new(self.clone())
     }
 
     fn search_by_id(
