@@ -136,7 +136,7 @@ impl Identifier {
 impl Display for Identifier {
     /// Converts the Identifier into a base hex string.
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", hex::encode(&self.0))
+        write!(f, "{}", hex::encode(self.0))
     }
 }
 
