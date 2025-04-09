@@ -15,8 +15,8 @@ where
     /// Create a new Identity
     pub fn new(id: &Identifier, mem_vec: &MembershipVector, address: T) -> Identity<T> {
         Identity {
-            id: id.clone(),
-            mem_vec: mem_vec.clone(),
+            id: *id,
+            mem_vec: *mem_vec,
             address,
         }
     }
