@@ -82,23 +82,23 @@ impl Identifier {
             if self.0[i] < other.0[i] {
                 return ComparisonContext {
                     result: CompareLess,
-                    left: self.clone(),
-                    right: other.clone(),
+                    left: *self,
+                    right: *other,
                     diff_index: i,
                 };
             } else if self.0[i] > other.0[i] {
                 return ComparisonContext {
                     result: CompareGreater,
-                    left: self.clone(),
-                    right: other.clone(),
+                    left: *self,
+                    right: *other,
                     diff_index: i,
                 };
             }
         }
         ComparisonContext {
             result: CompareEqual,
-            left: self.clone(),
-            right: other.clone(),
+            left: *self,
+            right: *other,
             diff_index: IDENTIFIER_SIZE_BYTES,
         }
     }
