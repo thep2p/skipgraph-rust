@@ -2,6 +2,7 @@ use crate::core::lookup::lookup_table::LookupTable;
 use crate::core::search::id_search_req::IdentifierSearchRequest;
 use crate::core::search::id_search_res::IdentifierSearchResult;
 
+#[allow(dead_code)]
 trait IdentifierSearcher<T> {
     /// Performs the search for given identifier in the lookup table in the given direction and level.
     /// Essentially looks for the first match in the direction for the given level and all levels below.

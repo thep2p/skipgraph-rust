@@ -26,6 +26,15 @@ where
     }
 }
 
+impl <T> Default for ArrayLookupTable<T>
+where
+    T: Clone,
+{
+    fn default() -> Self {
+        ArrayLookupTable::new()
+    }
+}
+
 impl<T> Debug for ArrayLookupTable<T>
 where
     T: Clone + Debug,
