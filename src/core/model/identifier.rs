@@ -79,20 +79,24 @@ pub struct Identifier([u8; model::IDENTIFIER_SIZE_BYTES]);
 impl Identifier {
     pub fn compare(&self, other: &Identifier) -> ComparisonContext {
         for i in 0..model::IDENTIFIER_SIZE_BYTES {
-            if self.0[i] < other.0[i] {
-                return ComparisonContext {
-                    result: CompareLess,
-                    left: *self,
-                    right: *other,
-                    diff_index: i,
-                };
-            } else if self.0[i] > other.0[i] {
-                return ComparisonContext {
-                    result: CompareGreater,
-                    left: *self,
-                    right: *other,
-                    diff_index: i,
-                };
+            match self.0[i].cmp(&other.0[i]) {
+                std::cmp::Ordering::Less => {
+                    return ComparisonContext {
+                        result: CompareLess,
+                        left: *self,
+                        right: *other,
+                        diff_index: i,
+                    };
+                }
+                std::cmp::Ordering::Greater => {
+                    return ComparisonContext {
+                        result: CompareGreater,
+                        left: *self,
+                        right: *other,
+                        diff_index: i,
+                    };
+                }
+                _ => {}
             }
         }
         ComparisonContext {
