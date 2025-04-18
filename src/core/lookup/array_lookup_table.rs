@@ -2,13 +2,18 @@ use crate::core::lookup::lookup_table::{Level, LookupTable};
 use crate::core::model;
 use crate::core::model::direction::Direction;
 use crate::core::model::identity::Identity;
-use anyhow::anyhow;
+use anyhow::{anyhow, Context};
 use std::fmt::{Debug, Formatter};
+use std::sync::RwLock;
 
 /// It is a 2D array of Identity, where the first dimension is the level and the second dimension is the direction.
 /// Caution: lookup table by itself is not thread-safe, should be used with an Arc<Mutex<LookupTable>>.
 #[derive(Clone)]
 pub struct ArrayLookupTable<T: Clone> {
+    inner: RwLock<InnerArrayLookupTable<T>>,
+}
+
+struct InnerArrayLookupTable<T> {
     left: Vec<Option<Identity<T>>>,
     right: Vec<Option<Identity<T>>>,
 }
@@ -20,13 +25,15 @@ where
     /// Create a new empty LookupTable instance.
     pub fn new() -> ArrayLookupTable<T> {
         ArrayLookupTable {
-            left: vec![None; model::IDENTIFIER_SIZE_BYTES],
-            right: vec![None; model::IDENTIFIER_SIZE_BYTES],
+            inner: RwLock::new(InnerArrayLookupTable {
+                left: vec![None; model::IDENTIFIER_SIZE_BYTES],
+                right: vec![None; model::IDENTIFIER_SIZE_BYTES],
+            }),
         }
     }
 }
 
-impl <T> Default for ArrayLookupTable<T>
+impl<T> Default for ArrayLookupTable<T>
 where
     T: Clone,
 {
@@ -40,8 +47,11 @@ where
     T: Clone + Debug,
 {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-
-        for (i, (l, r)) in self.left.iter().zip(self.right.iter()).enumerate() {
+        let inner = self
+            .inner
+            .read()
+            .context("Failed to acquire read lock on the lookup table")?;
+        for (i, (l, r)) in self.inner.iter().zip(self.inner.iter()).enumerate() {
             writeln!(f, "Level: {}, Left: {:?}, Right: {:?}", i, l, r)?;
         }
         Ok(())
@@ -54,7 +64,7 @@ where
 {
     /// Update the entry at the given level and direction.
     fn update_entry(
-        &mut self,
+        &self,
         identity: Identity<T>,
         level: Level,
         direction: Direction,
@@ -66,12 +76,17 @@ where
             ));
         }
 
+        let inner = self
+            .inner
+            .write()
+            .context("Failed to acquire write lock on the lookup table")?;
+
         match direction {
             Direction::Left => {
-                self.left[level] = Some(identity);
+                inner.left[level] = Some(identity);
             }
             Direction::Right => {
-                self.right[level] = Some(identity);
+                inner.right[level] = Some(identity);
             }
         }
 
@@ -79,7 +94,7 @@ where
     }
 
     /// Remove the entry at the given level and direction, and flips it to None.
-    fn remove_entry(&mut self, level: Level, direction: Direction) -> anyhow::Result<()> {
+    fn remove_entry(&self, level: Level, direction: Direction) -> anyhow::Result<()> {
         if level >= model::IDENTIFIER_SIZE_BYTES {
             return Err(anyhow!(
                 "Position is larger than the max lookup table entry number: {}",
@@ -87,12 +102,17 @@ where
             ));
         }
 
+        let inner = self
+            .inner
+            .write()
+            .context("Failed to acquire write lock on the lookup table")?;
+
         match direction {
             Direction::Left => {
-                self.left[level] = None;
+                inner.left[level] = None;
             }
             Direction::Right => {
-                self.right[level] = None;
+                inner.right[level] = None;
             }
         }
 
@@ -107,7 +127,7 @@ where
         &self,
         level: Level,
         direction: Direction,
-    ) -> anyhow::Result<Option<&Identity<T>>> {
+    ) -> anyhow::Result<Option<Identity<T>>> {
         if level >= model::IDENTIFIER_SIZE_BYTES {
             return Err(anyhow!(
                 "Position is larger than the max lookup table entry number: {}",
@@ -115,9 +135,14 @@ where
             ));
         }
 
+        let inner = self
+            .inner
+            .read()
+            .context("Failed to acquire read lock on the lookup table")?;
+
         match direction {
-            Direction::Left => Ok(self.left[level].as_ref()),
-            Direction::Right => Ok(self.right[level].as_ref()),
+            Direction::Left => Ok(inner.left[level].clone()),
+            Direction::Right => Ok(inner.right[level].clone()),
         }
     }
 
@@ -128,8 +153,12 @@ where
         // iterates over the levels and compares the entries in the left and right directions
         for l in 0..model::IDENTIFIER_SIZE_BYTES {
             // Check if the left entry is equal
+            let inner = self
+                .inner
+                .read()
+                .context("Failed to acquire read lock on the lookup table").unwrap();
             if let Ok(other_entry) = other.get_entry(l, Direction::Left) {
-                if self.left[l].as_ref() != other_entry {
+                if inner.left[l].as_ref() != other_entry.as_ref() {
                     return false;
                 }
             } else {
@@ -138,7 +167,7 @@ where
             }
 
             if let Ok(other_entry) = other.get_entry(l, Direction::Right) {
-                if self.right[l].as_ref() != other_entry {
+                if inner.right[l].as_ref() != other_entry.as_ref() {
                     return false;
                 }
             } else {
