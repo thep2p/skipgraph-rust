@@ -49,15 +49,13 @@ pub fn random_network_identity() -> Identity<Address> {
 }
 
 /// Generate n random network identities; ID, MembershipVector, Address.
-#[cfg(test)]
 pub fn random_network_identities(n: usize) -> Vec<Identity<Address>> {
     (0..n).map(|_| random_network_identity()).collect()
 }
 
 /// Generates a random lookup table with 2 * n entries (n left and n right), and n levels.
-#[cfg(test)]
 pub fn random_network_lookup_table(n: usize) -> ArrayLookupTable<Address> {
-    let mut lt = ArrayLookupTable::new();
+    let lt = ArrayLookupTable::new();
     let ids = random_network_identities(2 * n);
     for i in 0..n {
         lt.update_entry(ids[i], i, Direction::Left).unwrap();
