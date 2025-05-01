@@ -2,7 +2,7 @@ use crate::core::lookup::lookup_table::{Level, LookupTable};
 use crate::core::model;
 use crate::core::model::direction::Direction;
 use crate::core::model::identity::Identity;
-use anyhow::{anyhow, Context};
+use anyhow::anyhow;
 use std::fmt::{Debug, Formatter};
 use std::sync::RwLock;
 
@@ -89,10 +89,10 @@ where
             ));
         }
 
-        let inner = self
-            .inner
-            .write()
-            .context("Failed to acquire write lock on the lookup table")?;
+        let mut inner = match self.inner.write() {
+            Ok(guard) => guard,
+            Err(_) => return Err(anyhow!("Failed to acquire write lock on the lookup table")),
+        };
 
         match direction {
             Direction::Left => {
@@ -115,10 +115,10 @@ where
             ));
         }
 
-        let inner = self
-            .inner
-            .write()
-            .context("Failed to acquire write lock on the lookup table")?;
+        let mut inner = match self.inner.write() {
+            Ok(guard) => guard,
+            Err(_) => return Err(anyhow!("Failed to acquire write lock on the lookup table")),
+        };
 
         match direction {
             Direction::Left => {
@@ -144,10 +144,10 @@ where
             ));
         }
 
-        let inner = self
-            .inner
-            .read()
-            .context("Failed to acquire read lock on the lookup table")?;
+        let inner = match self.inner.read() {
+            Ok(guard) => guard,
+            Err(_) => return Err(anyhow!("Failed to acquire read lock on the lookup table")),
+        };
 
         match direction {
             Direction::Left => Ok(inner.left[level].clone()),
@@ -162,11 +162,10 @@ where
         // iterates over the levels and compares the entries in the left and right directions
         for l in 0..model::IDENTIFIER_SIZE_BYTES {
             // Check if the left entry is equal
-            let inner = self
-                .inner
-                .read()
-                .context("Failed to acquire read lock on the lookup table")
-                .unwrap();
+            let inner = match self.inner.read() {
+                Ok(guard) => guard,
+                Err(_) => return false,
+            };
             if let Ok(other_entry) = other.get_entry(l, Direction::Left) {
                 if inner.left[l].as_ref() != other_entry.as_ref() {
                     return false;
@@ -230,8 +229,8 @@ mod tests {
         lt.update_entry(id1, 0, Direction::Left).unwrap();
         lt.update_entry(id2, 1, Direction::Right).unwrap();
 
-        assert_eq!(Some(&id1), lt.get_entry(0, Direction::Left).unwrap());
-        assert_eq!(Some(&id2), lt.get_entry(1, Direction::Right).unwrap());
+        assert_eq!(Some(id1), lt.get_entry(0, Direction::Left).unwrap());
+        assert_eq!(Some(id2), lt.get_entry(1, Direction::Right).unwrap());
         assert_eq!(None, lt.get_entry(2, Direction::Left).unwrap());
     }
 
@@ -289,11 +288,11 @@ mod tests {
         let id2 = random_network_identity();
 
         lt.update_entry(id1, 0, Direction::Left).unwrap();
-        assert_eq!(Some(&id1), lt.get_entry(0, Direction::Left).unwrap());
+        assert_eq!(Some(id1), lt.get_entry(0, Direction::Left).unwrap());
 
         lt.update_entry(id2, 0, Direction::Left).unwrap();
 
-        assert_eq!(Some(&id2), lt.get_entry(0, Direction::Left).unwrap());
+        assert_eq!(Some(id2), lt.get_entry(0, Direction::Left).unwrap());
     }
 
     #[test]
