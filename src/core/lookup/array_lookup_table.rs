@@ -8,7 +8,6 @@ use std::sync::RwLock;
 
 /// It is a 2D array of Identity, where the first dimension is the level and the second dimension is the direction.
 /// Caution: lookup table by itself is not thread-safe, should be used with an Arc<Mutex<LookupTable>>.
-#[derive(Clone)]
 pub struct ArrayLookupTable<T: Clone> {
     inner: RwLock<InnerArrayLookupTable<T>>,
 }
@@ -42,19 +41,33 @@ where
     }
 }
 
+impl<T: Clone> Clone for ArrayLookupTable<T> {
+    fn clone(&self) -> Self {
+        // Create a new instance of ArrayLookupTable with the same data
+        let inner = self.inner.read().unwrap();
+        ArrayLookupTable {
+            inner: RwLock::new(InnerArrayLookupTable {
+                left: inner.left.clone(),
+                right: inner.right.clone(),
+            }),
+        }
+    }
+}
+
 impl<T> Debug for ArrayLookupTable<T>
 where
     T: Clone + Debug,
 {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        let inner = self
-            .inner
-            .read()
-            .context("Failed to acquire read lock on the lookup table")?;
-        for (i, (l, r)) in self.inner.iter().zip(self.inner.iter()).enumerate() {
+        let inner = match self.inner.read() {
+            Ok(guard) => guard,
+            Err(_) => return write!(f, "Failed to acquire read lock on the lookup table"),
+        };
+        writeln!(f, "ArrayLookupTable: {{")?;
+        for (i, (l, r)) in inner.left.iter().zip(inner.right.iter()).enumerate() {
             writeln!(f, "Level: {}, Left: {:?}, Right: {:?}", i, l, r)?;
         }
-        Ok(())
+        write!(f, "}}")
     }
 }
 
@@ -123,11 +136,7 @@ where
     /// Returns None if the entry does not exist.
     /// Returns Some(Identity) if the entry exists.
     /// Returns an error if the level is out of bounds.
-    fn get_entry(
-        &self,
-        level: Level,
-        direction: Direction,
-    ) -> anyhow::Result<Option<Identity<T>>> {
+    fn get_entry(&self, level: Level, direction: Direction) -> anyhow::Result<Option<Identity<T>>> {
         if level >= model::IDENTIFIER_SIZE_BYTES {
             return Err(anyhow!(
                 "Position is larger than the max lookup table entry number: {}",
@@ -156,7 +165,8 @@ where
             let inner = self
                 .inner
                 .read()
-                .context("Failed to acquire read lock on the lookup table").unwrap();
+                .context("Failed to acquire read lock on the lookup table")
+                .unwrap();
             if let Ok(other_entry) = other.get_entry(l, Direction::Left) {
                 if inner.left[l].as_ref() != other_entry.as_ref() {
                     return false;
