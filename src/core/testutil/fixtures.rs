@@ -35,13 +35,11 @@ pub fn random_port() -> u16 {
 }
 
 /// Generate a random address
-#[cfg(test)]
 pub fn random_address() -> Address {
     Address::new("localhost", &random_port().to_string())
 }
 
 /// Generate a random network identity; ID, MembershipVector, Address.
-#[cfg(test)]
 pub fn random_network_identity() -> Identity<Address> {
     Identity::new(
         &random_identifier(),
