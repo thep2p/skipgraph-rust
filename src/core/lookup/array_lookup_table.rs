@@ -361,4 +361,62 @@ mod tests {
         let timeout = std::time::Duration::from_millis(100);
         join_all_with_timeout(handles.into_boxed_slice(), timeout).unwrap();
     }
+    
+    /// Test concurrent writes to the lookup table.
+    /// Creates a lookup table with 20 entries (10 left and 10 right).
+    /// Spawns 20 threads to write the entries concurrently.
+    /// Each thread writes an entry at a specific level and direction.
+    /// Checks if the entry is correct.
+    #[test]
+    fn test_concurrent_writes() {
+        use std::sync::{Arc, Barrier};
+        use std::thread;
+        
+        // Generate 20 random identities; 10 for left and 10 for right.
+        // The i index is the "left" entry at level i + 10 is the "right" entry at level i.
+        let lt = Arc::new(ArrayLookupTable::<Address>::new());
+        let levels = 10;
+        let identities = random_network_identities(2 * levels);
+        
+        // Number of writer threads
+        let num_threads = identities.len();
+        let barrier = Arc::new(Barrier::new(num_threads)); // to sync thread start
+        
+        // Spawn threads to write the entries concurrently
+        let mut handles = vec![];
+        for i in 0..num_threads {
+            let lt_ref = lt.clone();
+            let barrier_ref = barrier.clone();
+            let id = identities[i].clone();
+            let level = i % levels; // alternate between left and right
+            let direction = if i < levels { Direction::Left } else { Direction::Right };
+            
+            let handle = thread::spawn(move || {
+                barrier_ref.wait(); // wait for all threads to be ready
+                
+                // Write the entry
+                lt_ref.update_entry(id, level, direction).unwrap();
+                
+                // Read the entry back to check if it was written correctly
+                let entry = lt_ref.get_entry(level, direction).unwrap();
+                
+                // Check if the entry is correct
+                assert_eq!(entry, Some(id));
+            });
+            
+            handles.push(handle);
+        }
+        
+        // join all threads with a timeout
+        let timeout = std::time::Duration::from_millis(100);
+        join_all_with_timeout(handles.into_boxed_slice(), timeout).unwrap();
+        
+        // Check if the entries are correct
+        for i in 0..levels {
+            let left_entry = lt.get_entry(i, Direction::Left).unwrap();
+            let right_entry = lt.get_entry(i, Direction::Right).unwrap();
+            assert_eq!(left_entry, Some(identities[i].clone()));
+            assert_eq!(right_entry, Some(identities[i + levels].clone()));
+        }
+    }
 }
