@@ -283,7 +283,7 @@ mod tests {
     /// The test will update the entry at level 0, then update it again with a different identity.
     /// The test will then get the entry at level 0, which should return the second identity.
     fn test_lookup_table_override() {
-        let mut lt = ArrayLookupTable::new();
+        let lt = ArrayLookupTable::new();
         let id1 = random_network_identity();
         let id2 = random_network_identity();
 
@@ -306,7 +306,59 @@ mod tests {
         let lt2 = random_network_lookup_table(10);
 
         assert_ne!(lt1, lt2); // check if two random lookup tables are not equal
-        assert_eq!(lt1, lt1); // check if the lookup table is equal to itself
+        assert_eq!(lt1, lt1); // check if the lookup table is equal to itself 
         assert_eq!(lt2, lt2); // check if the lookup table is equal to itself
+    }
+    
+    /// Test concurrent reads from the lookup table.
+    /// Creates a lookup table with 20 entries (10 left and 10 right).
+    /// Spawns 20 threads to read the entries concurrently.
+    /// Each thread reads an entry at a specific level and direction.
+    /// Checks if the entry is correct.
+    #[test]
+    fn test_concurrent_reads() {
+        use std::sync::{Arc, Barrier};
+        use std::thread;
+        
+        let lt = Arc::new(ArrayLookupTable::<Address>::new());
+        
+        // Generate 20 random identities; 10 for left and 10 for right.
+        // The i index is the "left" entry at level i + 10 is the "right" entry at level i.
+        let levels = 10;
+        let identities = random_network_identities(2 * levels);
+        
+        for i in 0..levels {
+            lt.update_entry(identities[i].clone(), i, Direction::Left).unwrap();
+            lt.update_entry(identities[i+levels].clone(), i, Direction::Right).unwrap();
+        }
+        
+        // Number of reader threads
+        let num_threads = identities.len();
+        let barrier = Arc::new(Barrier::new(num_threads)); // to sync thread start
+        
+        // Spawn threads to read the entries concurrently
+        let mut handles = vec![];
+        for i in 0..num_threads {
+            let lt_ref = lt.clone();
+            let barrier_ref = barrier.clone();
+            let id = identities[i].clone();
+            let handle = thread::spawn(move || {
+                barrier_ref.wait(); // wait for all threads to be ready
+                let level = i % levels; // alternate between left and right
+                let direction = if i < levels { Direction::Left } else { Direction::Right };
+                
+                // Read the entry
+                let entry = lt_ref.get_entry(level, direction).unwrap();
+                
+                // Check if the entry is correct
+                assert_eq!(entry, Some(id));
+            });
+            
+            handles.push(handle);
+        }
+        
+        // join all threads with a timeout 
+        let timeout = std::time::Duration::from_millis(100);
+        join_all_with_timeout(handles.into_boxed_slice(), timeout).unwrap();
     }
 }

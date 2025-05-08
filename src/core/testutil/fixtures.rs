@@ -78,16 +78,16 @@ pub fn random_network_lookup_table(n: usize) -> ArrayLookupTable<Address> {
 pub fn join_all_with_timeout<T>(handles : Box<[JoinHandle<T>]>, timeout: Duration) -> Result<(), String>
 where T : Send + 'static {
     let start = std::time::Instant::now();
-    
+
     for handle in handles {
         let elapsed = start.elapsed();
         if elapsed >= timeout {
             return Err("Timeout".to_string());
         }
-        
+
         // Remaining time to wait for this thread to finish
         let remaining_time = timeout - elapsed;
-        
+
         // Check if the thread has finished
         match join_with_timeout(handle, remaining_time) {
             Ok(_) => continue,
@@ -96,7 +96,7 @@ where T : Send + 'static {
             }
         }
     }
-    
+
     Ok(())
 }
 
@@ -110,19 +110,19 @@ where T : Send + 'static {
 /// Returns:
 /// * Ok(()) if the thread finishes within the timeout.
 /// * Err(String) if the thread takes longer than the timeout or panics.
-pub fn join_with_timeout<T>(handle: JoinHandle<T>, timeout: Duration) -> Result<(), String> 
+pub fn join_with_timeout<T>(handle: JoinHandle<T>, timeout: Duration) -> Result<(), String>
 where T : Send + 'static {
     let (tx, rx) = std::sync::mpsc::channel();
-    
+
     // Spawn a thread just to join the target thread and send its result via channel
     let join_thread = std::thread::spawn(move || {
         let res = handle.join();
         let _ = tx.send(res);
     });
-    
+
     if let Ok(join_res) = rx.recv_timeout(timeout) {
         join_thread.join().expect("Failed to join thread");
-        match join_res {  
+        match join_res {
             Ok(res) => Ok(()),
             Err(e) => Err(format!("Thread panicked: {:?}", e)),
         }
