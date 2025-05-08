@@ -67,14 +67,25 @@ pub fn random_network_lookup_table(n: usize) -> ArrayLookupTable<Address> {
 }
 
 /// Joins all threads in the given handles with a timeout.
-/// If any thread takes longer than the timeout, it will return an error.
-/// If all threads finish within the timeout, it will return Ok(()).
-/// Arguments:
-/// * handles: A vector of JoinHandle<T> to join.
-/// * timeout: The maximum time to wait for each thread to finish.
-/// Returns:
-/// * Ok(()) if all threads finish within the timeout.
-/// * Err(String) if any thread takes longer than the timeout.
+///
+/// This function attempts to join each thread sequentially, waiting up to the given timeout 
+/// duration for each thread. If any thread does not complete within the remaining time budget, 
+/// the function will immediately return an error.
+///
+/// Note: If a timeout occurs on any thread, the function does NOT attempt to join the remaining threads; 
+/// it returns immediately. This means that some threads might remain unjoined if a timeout is encountered.
+///
+/// # Arguments
+/// * `handles`: A boxed slice of `JoinHandle<T>` representing the threads to join.
+/// * `timeout`: The maximum total time allowed to wait for all threads to finish.
+///
+/// # Returns
+/// * `Ok(())` if all threads are joined successfully within the timeout.
+/// * `Err(String)` if any thread exceeds the timeout or returns an error.
+///
+/// # Behavior
+/// The timeout is applied globally across all threads, but checked sequentially based on elapsed time.
+/// The function keeps track of elapsed time and reduces the wait time for each subsequent thread accordingly.
 pub fn join_all_with_timeout<T>(handles : Box<[JoinHandle<T>]>, timeout: Duration) -> Result<(), String>
 where T : Send + 'static {
     let start = std::time::Instant::now();
