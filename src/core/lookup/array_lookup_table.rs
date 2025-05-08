@@ -160,12 +160,12 @@ where
     /// Returns true if the entries are equal, false otherwise.
     fn equal(&self, other: &dyn LookupTable<T>) -> bool {
         // iterates over the levels and compares the entries in the left and right directions
+        let inner = match self.inner.read() {
+            Ok(guard) => guard,
+            Err(_) => return false,
+        };
         for l in 0..model::IDENTIFIER_SIZE_BYTES {
             // Check if the left entry is equal
-            let inner = match self.inner.read() {
-                Ok(guard) => guard,
-                Err(_) => return false,
-            };
             if let Ok(other_entry) = other.get_entry(l, Direction::Left) {
                 if inner.left[l].as_ref() != other_entry.as_ref() {
                     return false;
