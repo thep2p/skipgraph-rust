@@ -206,6 +206,7 @@ mod tests {
     use super::*;
     use crate::core::testutil::fixtures::*;
     use crate::core::Address;
+    use std::collections::HashMap;
 
     #[test]
     /// A new lookup table should be empty.
@@ -306,10 +307,10 @@ mod tests {
         let lt2 = random_network_lookup_table(10);
 
         assert_ne!(lt1, lt2); // check if two random lookup tables are not equal
-        assert_eq!(lt1, lt1); // check if the lookup table is equal to itself 
+        assert_eq!(lt1, lt1); // check if the lookup table is equal to itself
         assert_eq!(lt2, lt2); // check if the lookup table is equal to itself
     }
-    
+
     /// Test concurrent reads from the lookup table.
     /// Creates a lookup table with 20 entries (10 left and 10 right).
     /// Spawns 20 threads to read the entries concurrently.
@@ -319,23 +320,25 @@ mod tests {
     fn test_concurrent_reads() {
         use std::sync::{Arc, Barrier};
         use std::thread;
-        
+
         let lt = Arc::new(ArrayLookupTable::<Address>::new());
-        
+
         // Generate 20 random identities; 10 for left and 10 for right.
         // The i index is the "left" entry at level i + 10 is the "right" entry at level i.
         let levels = 10;
         let identities = random_network_identities(2 * levels);
-        
+
         for i in 0..levels {
-            lt.update_entry(identities[i].clone(), i, Direction::Left).unwrap();
-            lt.update_entry(identities[i+levels].clone(), i, Direction::Right).unwrap();
+            lt.update_entry(identities[i].clone(), i, Direction::Left)
+                .unwrap();
+            lt.update_entry(identities[i + levels].clone(), i, Direction::Right)
+                .unwrap();
         }
-        
+
         // Number of reader threads
         let num_threads = identities.len();
         let barrier = Arc::new(Barrier::new(num_threads)); // to sync thread start
-        
+
         // Spawn threads to read the entries concurrently
         let mut handles = vec![];
         for i in 0..num_threads {
@@ -345,23 +348,27 @@ mod tests {
             let handle = thread::spawn(move || {
                 barrier_ref.wait(); // wait for all threads to be ready
                 let level = i % levels; // alternate between left and right
-                let direction = if i < levels { Direction::Left } else { Direction::Right };
-                
+                let direction = if i < levels {
+                    Direction::Left
+                } else {
+                    Direction::Right
+                };
+
                 // Read the entry
                 let entry = lt_ref.get_entry(level, direction).unwrap();
-                
+
                 // Check if the entry is correct
                 assert_eq!(entry, Some(id));
             });
-            
+
             handles.push(handle);
         }
-        
-        // join all threads with a timeout 
+
+        // join all threads with a timeout
         let timeout = std::time::Duration::from_millis(100);
         join_all_with_timeout(handles.into_boxed_slice(), timeout).unwrap();
     }
-    
+
     /// Test concurrent writes to the lookup table.
     /// Creates a lookup table with 20 entries (10 left and 10 right).
     /// Spawns 20 threads to write the entries concurrently.
@@ -371,17 +378,17 @@ mod tests {
     fn test_concurrent_writes() {
         use std::sync::{Arc, Barrier};
         use std::thread;
-        
+
         // Generate 20 random identities; 10 for left and 10 for right.
         // The i index is the "left" entry at level i + 10 is the "right" entry at level i.
         let lt = Arc::new(ArrayLookupTable::<Address>::new());
         let levels = 10;
         let identities = random_network_identities(2 * levels);
-        
+
         // Number of writer threads
         let num_threads = identities.len();
         let barrier = Arc::new(Barrier::new(num_threads)); // to sync thread start
-        
+
         // Spawn threads to write the entries concurrently
         let mut handles = vec![];
         for i in 0..num_threads {
@@ -389,28 +396,32 @@ mod tests {
             let barrier_ref = barrier.clone();
             let id = identities[i].clone();
             let level = i % levels; // alternate between left and right
-            let direction = if i < levels { Direction::Left } else { Direction::Right };
-            
+            let direction = if i < levels {
+                Direction::Left
+            } else {
+                Direction::Right
+            };
+
             let handle = thread::spawn(move || {
                 barrier_ref.wait(); // wait for all threads to be ready
-                
+
                 // Write the entry
                 lt_ref.update_entry(id, level, direction).unwrap();
-                
+
                 // Read the entry back to check if it was written correctly
                 let entry = lt_ref.get_entry(level, direction).unwrap();
-                
+
                 // Check if the entry is correct
                 assert_eq!(entry, Some(id));
             });
-            
+
             handles.push(handle);
         }
-        
+
         // join all threads with a timeout
         let timeout = std::time::Duration::from_millis(100);
         join_all_with_timeout(handles.into_boxed_slice(), timeout).unwrap();
-        
+
         // Check if the entries are correct
         for i in 0..levels {
             let left_entry = lt.get_entry(i, Direction::Left).unwrap();
@@ -418,5 +429,123 @@ mod tests {
             assert_eq!(left_entry, Some(identities[i].clone()));
             assert_eq!(right_entry, Some(identities[i + levels].clone()));
         }
+    }
+
+    /// Test concurrent operations (read, write, remove) on the lookup table.
+    /// Creates an empty lookup table.
+    /// Spawns multiple threads to perform random operations concurrently.
+    /// Each thread performs a random number of operations (read, write, remove) repeatedly each
+    /// on a random level and direction.
+    ///
+    /// This test confines the number of levels to a smaller number to enforce thread contention on
+    /// a smaller number of levels, hence have meaningful concurrency on mutually exclusive operations.
+    ///
+    /// The core idea is to validate the read operation against the last write operation to the same (level, direction).
+    /// Note: failure or flaky behavior of this test may indicate a bug in the implementation.
+    #[test]
+    fn test_randomized_concurrent_operations_with_validation() {
+        use rand::Rng;
+        use std::sync::{Arc, Barrier, Mutex};
+        use std::thread;
+
+        // Shared context is an atomic unit shared between threads,
+        // which contains the lookup table and the last write map tracking the last
+        // write operation per (level, direction) to validate the read operation.
+        // This data structure must be atomic as a read from both must be done atomically as well
+        // as a write to both.
+        let shared_context = Arc::new(Mutex::new((
+            ArrayLookupTable::<Address>::new(),
+            HashMap::<(usize, Direction), Identity<Address>>::new(),
+        )));
+
+        let num_threads = 100;
+        let ops_per_thread = 1000;
+        let barrier = Arc::new(Barrier::new(num_threads));
+
+        let mut handles = vec![];
+
+        for t_id in 0..num_threads {
+            let shared_ref = shared_context.clone();
+            let barrier_ref = barrier.clone();
+
+
+            let handle = thread::spawn(move || {
+                let mut rng = rand::rng();
+                barrier_ref.wait(); // wait for all threads to be ready
+
+                for _ in 0..ops_per_thread {
+                    // Randomly selects a level from [0, num_threads / 10] in order to enforce thread
+                    // contention a smaller number of levels, hence have meaningful concurrency on mutually
+                    // exclusive operations.
+                    let level = rng.random_range(0..num_threads / 10);
+                    let direction = if rng.random_bool(0.5) {
+                        Direction::Left
+                    } else {
+                        Direction::Right
+                    };
+
+                    // Draw a random operation; 0: read, 1: write, 2: remove
+                    let op = rng.random_range(0..3);
+                    // println!("Thread {}: op: {}, level: {}, direction: {:?}", t_id, op, level, direction);
+                    match op {
+                        0 => {
+                            let (table, last_writes) = &mut *shared_ref.lock().unwrap();
+                            let read_val_opt = table.get_entry(level, direction).unwrap();
+
+                            let last_write_opt = last_writes.get(&(level, direction)).cloned();
+
+
+                            // Validates the read matches the last written value to the same (level, direction).
+                            match (read_val_opt, last_write_opt) {
+                                (None, None) => { /* no entry, no last write, expected! */ }
+                                (Some(ref read_val), Some(ref last_write)) => {
+                                    assert_eq!(
+                                        read_val, last_write,
+                                        "Thread {}: Read value {:?} does not match last write {:?}",
+                                        t_id, read_val, last_write
+                                    );
+                                }
+                                (Some(ref read_val), None) => {
+                                    panic!(
+                                        "Thread {}: Read value {:?} does not match last write None",
+                                        t_id, read_val
+                                    );
+                                }
+                                _ => {
+                                    panic!(
+                                        "Invalid state: read_val_opt: {:?}, last_write_opt: {:?}",
+                                        read_val_opt, last_write_opt
+                                    );
+                                }
+                            }
+                        }
+                        1 => {
+                            // write
+                            let (table, last_writes) = &mut *shared_ref.lock().unwrap();
+
+                            let id = random_network_identity();
+                            if table.update_entry(id.clone(), level, direction).is_ok() {
+                                // Update the last write map upon successful write
+                                last_writes.insert((level, direction), id);
+                            }
+                        }
+                        2 => {
+                            // remove atomically
+                            let (table, last_writes) = &mut *shared_ref.lock().unwrap();
+                            if table.remove_entry(level, direction).is_ok() {
+                                // Remove the last written entry
+                                last_writes.remove(&(level, direction));
+                            }
+                        }
+                        _ => panic!("Invalid operation"),
+                    }
+                }
+            });
+
+            handles.push(handle);
+        }
+        // join all threads with a timeout
+        let timeout = std::time::Duration::from_secs(10);
+        join_all_with_timeout(handles.into_boxed_slice(), timeout).unwrap();
     }
 }
