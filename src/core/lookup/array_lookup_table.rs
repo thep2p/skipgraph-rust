@@ -105,7 +105,7 @@ where
 
         Ok(())
     }
-
+    
     /// Remove the entry at the given level and direction, and flips it to None.
     fn remove_entry(&self, level: Level, direction: Direction) -> anyhow::Result<()> {
         if level >= model::IDENTIFIER_SIZE_BYTES {
@@ -162,7 +162,7 @@ where
         // iterates over the levels and compares the entries in the left and right directions
         let inner = match self.inner.read() {
             Ok(guard) => guard,
-            Err(_) => return false,
+            Err(err) => panic!("Failed to acquire read lock on the lookup table: {}", err),
         };
         for l in 0..model::IDENTIFIER_SIZE_BYTES {
             // Check if the left entry is equal
@@ -327,18 +327,18 @@ mod tests {
         // The i index is the "left" entry at level i + 10 is the "right" entry at level i.
         let levels = 10;
         let identities = random_network_identities(2 * levels);
-
+        
         for i in 0..levels {
             lt.update_entry(identities[i].clone(), i, Direction::Left)
                 .unwrap();
             lt.update_entry(identities[i + levels].clone(), i, Direction::Right)
                 .unwrap();
         }
-
+        
         // Number of reader threads
         let num_threads = identities.len();
         let barrier = Arc::new(Barrier::new(num_threads)); // to sync thread start
-
+        
         // Spawn threads to read the entries concurrently
         let mut handles = vec![];
         for i in 0..num_threads {
@@ -353,17 +353,17 @@ mod tests {
                 } else {
                     Direction::Right
                 };
-
+        
                 // Read the entry
                 let entry = lt_ref.get_entry(level, direction).unwrap();
-
+        
                 // Check if the entry is correct
                 assert_eq!(entry, Some(id));
             });
-
+        
             handles.push(handle);
         }
-
+        
         // join all threads with a timeout
         let timeout = std::time::Duration::from_millis(100);
         join_all_with_timeout(handles.into_boxed_slice(), timeout).unwrap();
