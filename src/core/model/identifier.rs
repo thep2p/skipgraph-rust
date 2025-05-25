@@ -150,7 +150,6 @@ mod tests {
     use crate::core::testutil::fixtures::random_membership_vector;
     use crate::core::testutil::random::random_hex_str;
     use crate::core::testutil::*;
-    use std::io::Read;
 
     #[test]
     fn test_identifier_from_bytes() {
