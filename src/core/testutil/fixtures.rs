@@ -59,8 +59,8 @@ pub fn random_network_lookup_table(n: usize) -> ArrayLookupTable<Address> {
     let lt = ArrayLookupTable::new(&span_fixture());
     let ids = random_network_identities(2 * n);
     for i in 0..n {
-        lt.update_entry(ids[i], i, Direction::Left).unwrap();
-        lt.update_entry(ids[i + n], i, Direction::Right).unwrap();
+        lt.update_entry(ids[i].clone(), i, Direction::Left).unwrap();
+        lt.update_entry(ids[i + n].clone(), i, Direction::Right).unwrap();
     }
     lt
 }
@@ -135,7 +135,7 @@ where T : Send + 'static {
     if let Ok(join_res) = rx.recv_timeout(timeout) {
         join_thread.join().expect("Failed to join thread");
         match join_res {
-            Ok(res) => Ok(()),
+            Ok(_) => Ok(()),
             Err(e) => Err(format!("Thread panicked: {:?}", e)),
         }
     } else {
