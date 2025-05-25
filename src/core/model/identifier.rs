@@ -219,9 +219,9 @@ mod tests {
 
     #[test]
     fn test_identifier_compare() {
-        let id_0 = Identifier::from_bytes(&vec![0u8; model::IDENTIFIER_SIZE_BYTES]).unwrap();
-        let id_1 = Identifier::from_bytes(&vec![127u8; model::IDENTIFIER_SIZE_BYTES]).unwrap();
-        let id_2 = Identifier::from_bytes(&vec![255u8; model::IDENTIFIER_SIZE_BYTES]).unwrap();
+        let id_0 = Identifier::from_bytes(&[0u8; model::IDENTIFIER_SIZE_BYTES]).unwrap();
+        let id_1 = Identifier::from_bytes(&[127u8; model::IDENTIFIER_SIZE_BYTES]).unwrap();
+        let id_2 = Identifier::from_bytes(&[255u8; model::IDENTIFIER_SIZE_BYTES]).unwrap();
 
         // each id is equal to itself
         let comp = id_0.compare(&id_0);
