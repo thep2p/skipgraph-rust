@@ -118,7 +118,7 @@ where T : Send + 'static {
 /// * handle: The JoinHandle<T> to join.
 /// * timeout: The maximum time to wait for the thread to finish.
 /// Returns:
-/// * Ok(()) if the thread finishes within the timeout.
+/// *  Ok(()) if the thread finishes within the timeout.
 /// * Err(String) if the thread takes longer than the timeout or panics.
 pub fn join_with_timeout<T>(handle: JoinHandle<T>, timeout: Duration) -> Result<(), String>
 where T : Send + 'static {
