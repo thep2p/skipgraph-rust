@@ -257,7 +257,7 @@ mod tests {
     /// The test will update the entries at level 0 and 1, and then get them.
     /// The test will also try to get an entry at level 2, which should return an error.
     fn test_lookup_table_update_get() {
-        let mut lt = ArrayLookupTable::new(&span_fixture());
+        let lt = ArrayLookupTable::new(&span_fixture());
         let id1 = random_network_identity();
         let id2 = random_network_identity();
 
@@ -274,7 +274,7 @@ mod tests {
     /// The test will update the entries at level 0 and 1, and then remove them.
     /// The test will then try to get the removed entries, which should return None.
     fn test_lookup_table_remove() {
-        let mut lt = ArrayLookupTable::new(&span_fixture());
+        let lt = ArrayLookupTable::new(&span_fixture());
         let id1 = random_network_identity();
         let id2 = random_network_identity();
 
@@ -291,7 +291,7 @@ mod tests {
     #[test]
     /// Test updating entries at out-of-bound levels.
     fn test_lookup_table_out_of_bound() {
-        let mut lt = ArrayLookupTable::new(&span_fixture());
+        let lt = ArrayLookupTable::new(&span_fixture());
         let id = random_network_identity();
 
         let result = lt.update_entry(id.clone(), model::IDENTIFIER_SIZE_BYTES, Direction::Left);
