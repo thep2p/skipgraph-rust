@@ -398,7 +398,7 @@ mod test {
             "a738f14dc0750b7f7e4c418fdda32c424e9ecf7280892d14648e405466a76f29",
         ).unwrap();
         
-        for p in (0..model::IDENTIFIER_SIZE_BYTES * 8 - 1) {
+        for p in 0..model::IDENTIFIER_SIZE_BYTES * 8 - 1 {
             assert_valid_decompose(&mv, p, mv.decompose_at_bit(p));
         }
     }
