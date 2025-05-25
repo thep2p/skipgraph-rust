@@ -141,9 +141,9 @@ impl Display for MembershipVector {
 #[cfg(test)]
 mod test {
     use super::*;
+    use crate::core::testutil::fixtures::random_membership_vector;
     use crate::core::testutil::random;
     use rand::Rng;
-    use crate::core::testutil::fixtures::random_membership_vector;
 
     extern crate rand;
     use crate::core::testutil::random::random_hex_str;

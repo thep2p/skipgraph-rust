@@ -39,9 +39,9 @@ where
 
 #[cfg(test)]
 mod tests {
-    use crate::core::Address;
     use super::*;
     use crate::core::testutil::fixtures::{random_identifier, random_membership_vector};
+    use crate::core::Address;
 
     #[test]
     fn test_identity() {

@@ -1,7 +1,7 @@
 use crate::core::model;
 use crate::core::model::identifier::ComparisonResult::{CompareEqual, CompareGreater, CompareLess};
 use crate::core::model::IDENTIFIER_SIZE_BYTES;
-use anyhow::{anyhow};
+use anyhow::anyhow;
 use std::fmt;
 use std::fmt::{Display, Formatter};
 
