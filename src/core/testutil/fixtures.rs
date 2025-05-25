@@ -114,12 +114,14 @@ where T : Send + 'static {
 /// 1. Spawn a new thread that will join the target thread.
 /// 2. Use a channel to send the result of the join back to the main thread.
 /// 3. If the join takes too long, the main thread will timeout and return an error.
-/// Arguments:
-/// * handle: The JoinHandle<T> to join.
-/// * timeout: The maximum time to wait for the thread to finish.
-/// Returns:
-/// *  Ok(()) if the thread finishes within the timeout.
-/// * Err(String) if the thread takes longer than the timeout or panics.
+///    Arguments:
+///    * handle: The JoinHandle<T> to join.
+///    * timeout: The maximum time to wait for the thread to finish.
+///   
+///   Returns:
+///
+///   * Ok(()) if the thread finishes within the timeout.
+///   * Err(String) if the thread takes longer than the timeout or panics.
 pub fn join_with_timeout<T>(handle: JoinHandle<T>, timeout: Duration) -> Result<(), String>
 where T : Send + 'static {
     let (tx, rx) = std::sync::mpsc::channel();
