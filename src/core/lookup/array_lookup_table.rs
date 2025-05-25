@@ -375,10 +375,10 @@ mod tests {
 
         // Spawn threads to read the entries concurrently
         let mut handles = vec![];
-        for i in 0..num_threads {
+        for (i, id) in identities.iter().enumerate().take(num_threads) {
             let lt_ref = lt.clone();
             let barrier_ref = barrier.clone();
-            let id = identities[i].clone();
+            let id = id.clone();
             let handle = thread::spawn(move || {
                 barrier_ref.wait(); // wait for all threads to be ready
                 let level = i % levels; // alternate between left and right
@@ -425,10 +425,10 @@ mod tests {
 
         // Spawn threads to write the entries concurrently
         let mut handles = vec![];
-        for i in 0..num_threads {
+        for (i, id) in identities.iter().enumerate().take(num_threads) {
             let lt_ref = lt.clone();
             let barrier_ref = barrier.clone();
-            let id = identities[i].clone();
+            let id = id.clone();
             let level = i % levels; // alternate between left and right
             let direction = if i < levels {
                 Direction::Left
