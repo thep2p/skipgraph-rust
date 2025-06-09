@@ -8,10 +8,7 @@ pub struct Identity<T> {
     address: T,
 }
 
-impl<T> Identity<T>
-where
-    T: Copy,
-{
+impl<T> Identity<T> where T: Clone {
     /// Create a new Identity
     pub fn new(id: &Identifier, mem_vec: &MembershipVector, address: T) -> Identity<T> {
         Identity {
@@ -33,7 +30,7 @@ where
 
     /// Get the address of the node
     pub fn address(&self) -> T {
-        self.address
+        self.address.clone()
     }
 }
 
@@ -51,6 +48,6 @@ mod tests {
         let identity = Identity::new(&id, &mem_vec, &address);
         assert_eq!(identity.id(), &id);
         assert_eq!(identity.mem_vec(), &mem_vec);
-        assert_eq!(identity.address(), &address);
+        assert_eq!(*identity.address(), address);
     }
 }
