@@ -5,6 +5,7 @@ use crate::core::{
 use std::fmt;
 use std::fmt::Formatter;
 use std::rc::Rc;
+use crate::core::model::direction::Direction;
 
 /// LocalNode is a struct that represents a single node in the local implementation of the skip graph.
 struct LocalNode {
@@ -30,9 +31,48 @@ impl Node for LocalNode {
 
     fn search_by_id(
         &self,
-        _req: &IdentifierSearchRequest,
+        req: &IdentifierSearchRequest,
     ) -> anyhow::Result<IdentifierSearchResult<Self::Address>> {
-        todo!()
+        // Collect neighbors from levels <= req.level in req.direction
+        let mut candidates = Vec::new();
+        for lvl in 0..req.level {
+            match self.lt.get_entry(lvl, req.direction) {
+                Ok(opt) => {
+                    if let Some(identity) = opt {
+                        // Check if the identity matches the requested identifier
+                        if identity.id().eq(&req.target) {
+                            candidates.push(identity.address());
+                        }
+                    }
+                } 
+                Err(e) => {
+                    return Err(anyhow::anyhow!(
+                        "Error while searching by id in level {}: {}",
+                        lvl,
+                        e
+                    ));
+                }
+            }
+        }
+        
+        // Filter candidates based on the direction
+        let result = match req.direction {
+            Direction::Left => {
+                // In the left direction, the result is the smallest identifier that is greater than or equal to the target
+                candidates.into_iter().filter(|(n)| n.get_identifier() >= &req.target).min_by_key(|n| n.get_identifier())
+            }
+            Direction::Right => {
+                // In the right direction, the result is the greatest identifier that is less than or equal to the target
+                candidates.into_iter().filter(|n| n.get_identifier() <= &req.target).max_by_key(|n| n.get_identifier())
+            }
+        };
+        
+        
+        if result.is_none() {
+            result = Some(self.get_address());
+        }
+        
+        Ok(IdentifierSearchResult::new(req, result))
     }
 
     fn search_by_mem_vec(
