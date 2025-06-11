@@ -152,4 +152,38 @@ mod tests {
         // TODO: implement get_address for LocalNode
         // assert_eq!(node.get_address(), &node);
     }
+
+    /// Test that returns the correct candidate when searching in the left direction,
+    /// where the smallest identifier greater than or equal to the target should be returned.
+    #[test]
+    fn test_search_by_id_found_left_direction() {
+        todo!()
+    }
+
+    /// Test that returns the correct candidate when searching in the right direction,
+    /// where the greatest identifier less than or equal to the target should be returned.
+    #[test]
+    fn test_search_by_id_found_right_direction() {
+        todo!()
+    }
+
+    /// Test that returns the node's own address when no candidates are found matching the target.
+    #[test]
+    fn test_search_by_id_no_candidates() {
+        todo!()
+    }
+
+    /// Test that returns an error when the lookup table returns an error during search at any level.
+    #[test]
+    fn test_search_by_id_error_propagation() {
+        todo!()
+    }
+
+    /// Test that correctly handles multiple candidates and returns the appropriate candidate 
+    /// per direction and identifier comparison logic.
+    #[test]
+    fn test_search_by_id_multiple_candidates() {
+        todo!()
+    }
+
 }
