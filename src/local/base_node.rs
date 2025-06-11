@@ -41,6 +41,7 @@ impl Node for LocalNode {
                     if let Some(identity) = opt {
                         // Check if the identity matches the requested identifier
                         if identity.id().eq(&req.target) {
+                            // TODO: this should be pushed as (address, level)
                             candidates.push(identity.address());
                         }
                     }

@@ -2,6 +2,7 @@ use crate::core::model::identity::Identity;
 use crate::core::search::id_search_req::IdentifierSearchRequest;
 
 pub struct IdentifierSearchResult<T> {
+    // TODO: req should be decomposed into direction and level
     req : IdentifierSearchRequest,
     result: Option<Identity<T>>,
 }
