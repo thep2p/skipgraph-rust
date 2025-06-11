@@ -6,15 +6,15 @@ use crate::core::search::id_search_req::IdentifierSearchRequest;
 pub struct IdentifierSearchResult<T> {
     target: Identifier,
     level: LookupTableLevel,
-    result: Option<Identity<T>>,
+    address: T,
 }
 
 impl<T> IdentifierSearchResult<T> {
-    pub fn new(req: IdentifierSearchRequest, result: Option<Identity<T>>) -> Self {
+    pub fn new(target : Identifier, level: LookupTableLevel, address: T) -> Self {
         IdentifierSearchResult {
-            target: req.target,
-            level: req.level,
-            result,
+            target,
+            level,
+            address,
         }
     }
 
@@ -26,7 +26,7 @@ impl<T> IdentifierSearchResult<T> {
         self.level
     }
 
-    pub fn result(&self) -> Option<&Identity<T>> {
-        self.result.as_ref()
+    pub fn result(&self) -> &T {
+        &self.address
     }
 }
