@@ -1,3 +1,4 @@
+use crate::core::model::direction::Direction;
 use crate::core::{
     Identifier, IdentifierSearchRequest, IdentifierSearchResult, LookupTable, MembershipVector,
     Node,
@@ -5,7 +6,6 @@ use crate::core::{
 use std::fmt;
 use std::fmt::Formatter;
 use std::rc::Rc;
-use crate::core::model::direction::Direction;
 
 /// LocalNode is a struct that represents a single node in the local implementation of the skip graph.
 struct LocalNode {
@@ -41,11 +41,10 @@ impl Node for LocalNode {
                     if let Some(identity) = opt {
                         // Check if the identity matches the requested identifier
                         if identity.id().eq(&req.target) {
-                            // TODO: this should be pushed as (address, level)
-                            candidates.push(identity.address());
+                            candidates.push((identity.address(), lvl));
                         }
                     }
-                } 
+                }
                 Err(e) => {
                     return Err(anyhow::anyhow!(
                         "Error while searching by id in level {}: {}",
@@ -55,25 +54,39 @@ impl Node for LocalNode {
                 }
             }
         }
-        
+
         // Filter candidates based on the direction
         let result = match req.direction {
             Direction::Left => {
                 // In the left direction, the result is the smallest identifier that is greater than or equal to the target
-                candidates.into_iter().filter(|(n)| n.get_identifier() >= &req.target).min_by_key(|n| n.get_identifier())
+                candidates
+                    .into_iter()
+                    .filter(|(n, _)| n.get_identifier() >= &req.target)
+                    .min_by_key(|(n, _)| *n.get_identifier())
             }
             Direction::Right => {
                 // In the right direction, the result is the greatest identifier that is less than or equal to the target
-                candidates.into_iter().filter(|n| n.get_identifier() <= &req.target).max_by_key(|n| n.get_identifier())
+                candidates
+                    .into_iter()
+                    .filter(|(n, _)| n.get_identifier() <= &req.target)
+                    .max_by_key(|(n, _)| *n.get_identifier())
             }
         };
-        
-        
-        if result.is_none() {
-            result = Some(self.get_address());
+
+        match result {
+            Some((address, level)) => {
+                // If a candidate is found, return it
+                Ok(IdentifierSearchResult::new(req.target, level, address))
+            }
+            None => {
+                // If no candidates are found, return None
+                Ok(IdentifierSearchResult::new(
+                    req.target,
+                    0,
+                    self.get_address(),
+                ))
+            }
         }
-        
-        Ok(IdentifierSearchResult::new(req, result))
     }
 
     fn search_by_mem_vec(
@@ -120,7 +133,9 @@ impl Clone for LocalNode {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::core::testutil::fixtures::{random_identifier, random_membership_vector, span_fixture};
+    use crate::core::testutil::fixtures::{
+        random_identifier, random_membership_vector, span_fixture,
+    };
     use crate::core::ArrayLookupTable;
 
     #[test]
