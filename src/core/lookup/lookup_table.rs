@@ -1,6 +1,5 @@
 use crate::core::model::direction::Direction;
 use crate::core::model::identity::Identity;
-use std::fmt::Debug;
 
 /// LookupTableLevel represents level of a lookup table. entry in the table.
 pub type LookupTableLevel = usize;
@@ -21,8 +20,11 @@ pub trait LookupTable {
     /// Get the entry at the given level and direction.
     /// Returns None if the entry is not present.
     /// Returns Some(Identity) if the entry is present.
-    fn get_entry(&self, level: LookupTableLevel, direction: Direction)
-                 -> anyhow::Result<Option<Identity>>;
+    fn get_entry(
+        &self,
+        level: LookupTableLevel,
+        direction: Direction,
+    ) -> anyhow::Result<Option<Identity>>;
 
     /// Dynamically compares the lookup table with another for equality.
     fn equal(&self, other: &dyn LookupTable) -> bool;

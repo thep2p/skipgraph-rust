@@ -227,7 +227,6 @@ impl PartialEq for ArrayLookupTable {
 mod tests {
     use super::*;
     use crate::core::testutil::fixtures::*;
-    use crate::core::Address;
     use std::collections::HashMap;
 
     #[test]

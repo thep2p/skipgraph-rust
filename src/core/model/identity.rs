@@ -1,4 +1,3 @@
-use std::ops::Add;
 use crate::core::{Address, Identifier, MembershipVector};
 
 /// Identity is an immutable struct that represents a node's identity in the network (ID, MembershipVector, Address).
@@ -31,7 +30,7 @@ impl Identity {
 
     /// Get the address of the node
     pub fn address(&self) -> Address {
-        self.address.clone()
+        self.address
     }
 }
 

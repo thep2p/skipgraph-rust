@@ -16,7 +16,7 @@ pub(crate) struct LocalNode {
 
 impl Node for LocalNode {
     type Address = Rc<LocalNode>;
-    
+
     fn get_identifier(&self) -> &Identifier {
         &self.id
     }
@@ -62,14 +62,14 @@ impl Node for LocalNode {
                 candidates
                     .into_iter()
                     .filter(|(id, _)| id >= &req.target)
-                    .min_by_key(|(id, _)| id.clone())
+                    .min_by_key(|(id, _)| *id)
             }
             Direction::Right => {
                 // In the right direction, the result is the greatest identifier that is less than or equal to the target
                 candidates
                     .into_iter()
                     .filter(|(id, _)| id <= &req.target)
-                    .max_by_key(|(id, _)| id.clone())
+                    .max_by_key(|(id, _)| *id)
             }
         };
 
@@ -83,7 +83,7 @@ impl Node for LocalNode {
                 Ok(IdentifierSearchResult::new(
                     req.target,
                     0,
-                    self.get_identifier().clone(),
+                    *self.get_identifier(),
                 ))
             }
         }
@@ -96,7 +96,7 @@ impl Node for LocalNode {
         todo!()
     }
 
-    fn join(&self, introducer: Self::Address) -> anyhow::Result<()> {
+    fn join(&self, _introducer: Self::Address) -> anyhow::Result<()> {
         todo!()
     }
 }
@@ -137,7 +137,6 @@ mod tests {
         random_identifier, random_membership_vector, span_fixture,
     };
     use crate::core::ArrayLookupTable;
-    use crate::core::model::IDENTIFIER_SIZE_BYTES;
 
     #[test]
     fn test_local_node() {
@@ -154,36 +153,36 @@ mod tests {
         // assert_eq!(node.get_address(), &node);
     }
 
-    /// Test that returns the correct candidate when searching in the left direction,
-    /// where the smallest identifier greater than or equal to the target should be returned.
-    #[test]
-    fn test_search_by_id_found_left_direction() {
-        todo!()
-    }
-
-    /// Test that returns the correct candidate when searching in the right direction,
-    /// where the greatest identifier less than or equal to the target should be returned.
-    #[test]
-    fn test_search_by_id_found_right_direction() {
-        todo!()
-    }
-
-    /// Test that returns the node's own address when no candidates are found matching the target.
-    #[test]
-    fn test_search_by_id_no_candidates() {
-        todo!()
-    }
-
-    /// Test that returns an error when the lookup table returns an error during search at any level.
-    #[test]
-    fn test_search_by_id_error_propagation() {
-        todo!()
-    }
-
-    /// Test that correctly handles multiple candidates and returns the appropriate candidate
-    /// per direction and identifier comparison logic.
-    #[test]
-    fn test_search_by_id_multiple_candidates() {
-        todo!()
-    }
+    // /// Test that returns the correct candidate when searching in the left direction,
+    // /// where the smallest identifier greater than or equal to the target should be returned.
+    // #[test]
+    // fn test_search_by_id_found_left_direction() {
+    //     todo!()
+    // }
+    // 
+    // /// Test that returns the correct candidate when searching in the right direction,
+    // /// where the greatest identifier less than or equal to the target should be returned.
+    // #[test]
+    // fn test_search_by_id_found_right_direction() {
+    //     todo!()
+    // }
+    // 
+    // /// Test that returns the node's own address when no candidates are found matching the target.
+    // #[test]
+    // fn test_search_by_id_no_candidates() {
+    //     todo!()
+    // }
+    // 
+    // /// Test that returns an error when the lookup table returns an error during search at any level.
+    // #[test]
+    // fn test_search_by_id_error_propagation() {
+    //     todo!()
+    // }
+    // 
+    // /// Test that correctly handles multiple candidates and returns the appropriate candidate
+    // /// per direction and identifier comparison logic.
+    // #[test]
+    // fn test_search_by_id_multiple_candidates() {
+    //     todo!()
+    // }
 }
