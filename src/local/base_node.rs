@@ -153,12 +153,12 @@ mod tests {
         // assert_eq!(node.get_address(), &node);
     }
 
-    // /// Test that returns the correct candidate when searching in the left direction,
-    // /// where the smallest identifier greater than or equal to the target should be returned.
-    // #[test]
-    // fn test_search_by_id_found_left_direction() {
-    //     todo!()
-    // }
+    /// Test that returns the correct candidate when searching in the left direction,
+    /// where the smallest identifier greater than or equal to the target should be returned.
+    #[test]
+    fn test_search_by_id_found_left_direction() {
+        todo!()
+    }
     // 
     // /// Test that returns the correct candidate when searching in the right direction,
     // /// where the greatest identifier less than or equal to the target should be returned.

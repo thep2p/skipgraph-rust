@@ -212,6 +212,38 @@ impl LookupTable for ArrayLookupTable {
         true
     }
 
+    /// Returns the list of left neighbors at the current node as a vector of tuples containing the level and identity.
+    fn left_neighbors(&self) -> anyhow::Result<Vec<(usize, Identity)>> {
+        let inner = match self.inner.read() {
+            Ok(guard) => guard,
+            Err(_) => return Err(anyhow!("Failed to acquire read lock on the lookup table")),
+        };
+
+        let mut neighbors = Vec::new();
+        for (level, entry) in inner.left.iter().enumerate() {
+            if let Some(identity) = entry {
+                neighbors.push((level, identity.clone()));
+            }
+        }
+        Ok(neighbors)
+    }
+
+    /// Returns the list of right neighbors at the current node as a vector of tuples containing the level and identity.
+    fn right_neighbors(&self) -> anyhow::Result<Vec<(usize, Identity)>> {
+        let inner = match self.inner.read() {
+            Ok(guard) => guard,
+            Err(_) => return Err(anyhow!("Failed to acquire read lock on the lookup table")),
+        };
+
+        let mut neighbors = Vec::new();
+        for (level, entry) in inner.right.iter().enumerate() {
+            if let Some(identity) = entry {
+                neighbors.push((level, identity.clone()));
+            }
+        }
+        Ok(neighbors)
+    }
+
     fn clone_box(&self) -> Box<dyn LookupTable> {
         Box::new(self.clone())
     }
