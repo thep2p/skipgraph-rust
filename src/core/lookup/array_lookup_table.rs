@@ -262,7 +262,6 @@ mod tests {
     use super::*;
     use crate::core::testutil::fixtures::*;
     use std::collections::HashMap;
-    use crate::core::model::IDENTIFIER_SIZE_BYTES;
 
     #[test]
     /// A new lookup table should be empty.
@@ -602,22 +601,28 @@ mod tests {
         let timeout = std::time::Duration::from_secs(10);
         join_all_with_timeout(handles.into_boxed_slice(), timeout).unwrap();
     }
-    
+
     /// Tests the retrieval of left and right neighbors from the lookup table.
     #[test]
     fn test_left_and_right_neighbors() {
         let lt = random_lookup_table(LOOKUP_TABLE_LEVELS);
-        
+
         let rights = lt.right_neighbors().unwrap();
         assert_eq!(rights.len(), LOOKUP_TABLE_LEVELS);
         for (level, identity) in rights.iter() {
-            assert_eq!(lt.get_entry(*level, Direction::Right).unwrap(), Some(identity.clone()));
+            assert_eq!(
+                lt.get_entry(*level, Direction::Right).unwrap(),
+                Some(identity.clone())
+            );
         }
-        
+
         let lefts = lt.left_neighbors().unwrap();
         assert_eq!(lefts.len(), LOOKUP_TABLE_LEVELS);
         for (level, identity) in rights.iter() {
-            assert_eq!(lt.get_entry(*level, Direction::Right).unwrap(), Some(identity.clone()));
+            assert_eq!(
+                lt.get_entry(*level, Direction::Right).unwrap(),
+                Some(identity.clone())
+            );
         }
     }
 }
