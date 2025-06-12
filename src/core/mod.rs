@@ -13,3 +13,4 @@ pub use crate::core::model::memvec::MembershipVector;
 pub use crate::core::node::Node;
 pub use crate::core::search::id_search_req::IdentifierSearchRequest;
 pub use crate::core::search::id_search_res::IdentifierSearchResult;
+pub use crate::core::lookup::array_lookup_table::LOOKUP_TABLE_LEVELS;
