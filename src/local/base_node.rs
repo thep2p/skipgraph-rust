@@ -35,12 +35,12 @@ impl Node for LocalNode {
     ) -> anyhow::Result<IdentifierSearchResult> {
         // Collect neighbors from levels <= req.level in req.direction
         let mut candidates = Vec::new();
-        for lvl in 0..req.level {
-            match self.lt.get_entry(lvl, req.direction) {
+        for lvl in 0..req.level() {
+            match self.lt.get_entry(lvl, req.direction()) {
                 Ok(opt) => {
                     if let Some(identity) = opt {
                         // Check if the identity matches the requested identifier
-                        if identity.id().eq(&req.target) {
+                        if identity.id().eq(req.target()) {
                             candidates.push((*identity.id(), lvl));
                         }
                     }
@@ -56,19 +56,19 @@ impl Node for LocalNode {
         }
 
         // Filter candidates based on the direction
-        let result = match req.direction {
+        let result = match req.direction() {
             Direction::Left => {
                 // In the left direction, the result is the smallest identifier that is greater than or equal to the target
                 candidates
                     .into_iter()
-                    .filter(|(id, _)| id >= &req.target)
+                    .filter(|(id, _)| id >= req.target())
                     .min_by_key(|(id, _)| *id)
             }
             Direction::Right => {
                 // In the right direction, the result is the greatest identifier that is less than or equal to the target
                 candidates
                     .into_iter()
-                    .filter(|(id, _)| id <= &req.target)
+                    .filter(|(id, _)| id <= req.target())
                     .max_by_key(|(id, _)| *id)
             }
         };
@@ -76,12 +76,12 @@ impl Node for LocalNode {
         match result {
             Some((id, level)) => {
                 // If a candidate is found, return it
-                Ok(IdentifierSearchResult::new(req.target, level, id))
+                Ok(IdentifierSearchResult::new(*req.target(), level, id))
             }
             None => {
                 // If no candidates are found, return its own identifier
                 Ok(IdentifierSearchResult::new(
-                    req.target,
+                    *req.target(),
                     0,
                     *self.get_identifier(),
                 ))
@@ -134,9 +134,10 @@ impl Clone for LocalNode {
 mod tests {
     use super::*;
     use crate::core::testutil::fixtures::{
-        random_identifier, random_membership_vector, span_fixture,
+        random_identifier, random_lookup_table_with_extremes,
+        random_membership_vector, span_fixture,
     };
-    use crate::core::ArrayLookupTable;
+    use crate::core::{ArrayLookupTable, LOOKUP_TABLE_LEVELS};
 
     #[test]
     fn test_local_node() {
@@ -157,28 +158,52 @@ mod tests {
     /// where the smallest identifier greater than or equal to the target should be returned.
     #[test]
     fn test_search_by_id_found_left_direction() {
-        todo!()
+        let lt = random_lookup_table_with_extremes(LOOKUP_TABLE_LEVELS);
+        let node = LocalNode {
+            id: random_identifier(),
+            mem_vec: random_membership_vector(),
+            lt: Box::new(lt.clone()),
+        };
+
+        for lvl in 0..LOOKUP_TABLE_LEVELS {
+            let target = random_identifier();
+            let direction = Direction::Left;
+            let req = IdentifierSearchRequest::new(target, lvl, direction);
+
+            let result = node.search_by_id(&req).unwrap();
+            lt.left_neighbors()
+                .unwrap()
+                .iter()
+                .filter(|(lvl, id)| lvl <= &req.level() && id.id() >= req.target())
+                .min_by_key(|(id, _)| *id)
+                .map(|(lvl, id)| {
+                    assert_eq!(result.target(), req.target());
+                    assert_eq!(result.level(), *lvl);
+                    assert_eq!(result.result(), id.id());
+                })
+                .expect("Expected a candidate to be found in the left direction");
+        }
     }
-    // 
+    //
     // /// Test that returns the correct candidate when searching in the right direction,
     // /// where the greatest identifier less than or equal to the target should be returned.
     // #[test]
     // fn test_search_by_id_found_right_direction() {
     //     todo!()
     // }
-    // 
+    //
     // /// Test that returns the node's own address when no candidates are found matching the target.
     // #[test]
     // fn test_search_by_id_no_candidates() {
     //     todo!()
     // }
-    // 
+    //
     // /// Test that returns an error when the lookup table returns an error during search at any level.
     // #[test]
     // fn test_search_by_id_error_propagation() {
     //     todo!()
     // }
-    // 
+    //
     // /// Test that correctly handles multiple candidates and returns the appropriate candidate
     // /// per direction and identifier comparison logic.
     // #[test]
