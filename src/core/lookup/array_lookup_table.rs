@@ -7,6 +7,8 @@ use std::fmt::{Debug, Formatter};
 use std::sync::RwLock;
 use tracing::{Level, Span};
 
+const LOOKUP_TABLE_LEVELS: usize = model::IDENTIFIER_SIZE_BYTES * 8;
+
 /// It is a 2D array of Identity, where the first dimension is the level and the second dimension is the direction.
 /// Caution: lookup table by itself is not thread-safe, should be used with an Arc<Mutex<LookupTable>>.
 pub struct ArrayLookupTable {
@@ -26,8 +28,8 @@ impl ArrayLookupTable {
 
         ArrayLookupTable {
             inner: RwLock::new(InnerArrayLookupTable {
-                left: vec![None; model::IDENTIFIER_SIZE_BYTES * 8],
-                right: vec![None; model::IDENTIFIER_SIZE_BYTES * 8],
+                left: vec![None; LOOKUP_TABLE_LEVELS],
+                right: vec![None; LOOKUP_TABLE_LEVELS],
             }),
             span,
         }
@@ -70,7 +72,7 @@ impl LookupTable for ArrayLookupTable {
         level: LookupTableLevel,
         direction: Direction,
     ) -> anyhow::Result<()> {
-        if level >= model::IDENTIFIER_SIZE_BYTES * 8 {
+        if level >= LOOKUP_TABLE_LEVELS {
             return Err(anyhow!(
                 "Position is larger than the max lookup table entry number: {}",
                 level
@@ -104,7 +106,7 @@ impl LookupTable for ArrayLookupTable {
 
     /// Remove the entry at the given level and direction, and flips it to None.
     fn remove_entry(&self, level: LookupTableLevel, direction: Direction) -> anyhow::Result<()> {
-        if level >= model::IDENTIFIER_SIZE_BYTES * 8{
+        if level >= LOOKUP_TABLE_LEVELS {
             return Err(anyhow!(
                 "Position is larger than the max lookup table entry number: {}",
                 level
@@ -151,7 +153,7 @@ impl LookupTable for ArrayLookupTable {
         level: LookupTableLevel,
         direction: Direction,
     ) -> anyhow::Result<Option<Identity>> {
-        if level >= model::IDENTIFIER_SIZE_BYTES * 8{
+        if level >= LOOKUP_TABLE_LEVELS {
             return Err(anyhow!(
                 "Position is larger than the max lookup table entry number: {}",
                 level
@@ -604,16 +606,16 @@ mod tests {
     /// Tests the retrieval of left and right neighbors from the lookup table.
     #[test]
     fn test_left_and_right_neighbors() {
-        let lt = random_lookup_table(IDENTIFIER_SIZE_BYTES * 8);
+        let lt = random_lookup_table(LOOKUP_TABLE_LEVELS);
         
         let rights = lt.right_neighbors().unwrap();
-        assert_eq!(rights.len(), IDENTIFIER_SIZE_BYTES * 8);
+        assert_eq!(rights.len(), LOOKUP_TABLE_LEVELS);
         for (level, identity) in rights.iter() {
             assert_eq!(lt.get_entry(*level, Direction::Right).unwrap(), Some(identity.clone()));
         }
         
         let lefts = lt.left_neighbors().unwrap();
-        assert_eq!(lefts.len(), IDENTIFIER_SIZE_BYTES * 8);
+        assert_eq!(lefts.len(), LOOKUP_TABLE_LEVELS);
         for (level, identity) in rights.iter() {
             assert_eq!(lt.get_entry(*level, Direction::Right).unwrap(), Some(identity.clone()));
         }
