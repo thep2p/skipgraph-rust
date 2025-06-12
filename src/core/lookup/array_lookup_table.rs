@@ -26,8 +26,8 @@ impl ArrayLookupTable {
 
         ArrayLookupTable {
             inner: RwLock::new(InnerArrayLookupTable {
-                left: vec![None; model::IDENTIFIER_SIZE_BYTES],
-                right: vec![None; model::IDENTIFIER_SIZE_BYTES],
+                left: vec![None; model::IDENTIFIER_SIZE_BYTES * 8],
+                right: vec![None; model::IDENTIFIER_SIZE_BYTES * 8],
             }),
             span,
         }
@@ -70,7 +70,7 @@ impl LookupTable for ArrayLookupTable {
         level: LookupTableLevel,
         direction: Direction,
     ) -> anyhow::Result<()> {
-        if level >= model::IDENTIFIER_SIZE_BYTES {
+        if level >= model::IDENTIFIER_SIZE_BYTES * 8 {
             return Err(anyhow!(
                 "Position is larger than the max lookup table entry number: {}",
                 level
@@ -104,7 +104,7 @@ impl LookupTable for ArrayLookupTable {
 
     /// Remove the entry at the given level and direction, and flips it to None.
     fn remove_entry(&self, level: LookupTableLevel, direction: Direction) -> anyhow::Result<()> {
-        if level >= model::IDENTIFIER_SIZE_BYTES {
+        if level >= model::IDENTIFIER_SIZE_BYTES * 8{
             return Err(anyhow!(
                 "Position is larger than the max lookup table entry number: {}",
                 level
@@ -151,7 +151,7 @@ impl LookupTable for ArrayLookupTable {
         level: LookupTableLevel,
         direction: Direction,
     ) -> anyhow::Result<Option<Identity>> {
-        if level >= model::IDENTIFIER_SIZE_BYTES {
+        if level >= model::IDENTIFIER_SIZE_BYTES * 8{
             return Err(anyhow!(
                 "Position is larger than the max lookup table entry number: {}",
                 level
@@ -260,6 +260,7 @@ mod tests {
     use super::*;
     use crate::core::testutil::fixtures::*;
     use std::collections::HashMap;
+    use crate::core::model::IDENTIFIER_SIZE_BYTES;
 
     #[test]
     /// A new lookup table should be empty.
@@ -598,5 +599,23 @@ mod tests {
         // join all threads with a timeout
         let timeout = std::time::Duration::from_secs(10);
         join_all_with_timeout(handles.into_boxed_slice(), timeout).unwrap();
+    }
+    
+    /// Tests the retrieval of left and right neighbors from the lookup table.
+    #[test]
+    fn test_left_and_right_neighbors() {
+        let lt = random_lookup_table(IDENTIFIER_SIZE_BYTES * 8);
+        
+        let rights = lt.right_neighbors().unwrap();
+        assert_eq!(rights.len(), IDENTIFIER_SIZE_BYTES * 8);
+        for (level, identity) in rights.iter() {
+            assert_eq!(lt.get_entry(*level, Direction::Right).unwrap(), Some(identity.clone()));
+        }
+        
+        let lefts = lt.left_neighbors().unwrap();
+        assert_eq!(lefts.len(), IDENTIFIER_SIZE_BYTES * 8);
+        for (level, identity) in rights.iter() {
+            assert_eq!(lt.get_entry(*level, Direction::Right).unwrap(), Some(identity.clone()));
+        }
     }
 }
