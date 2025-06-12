@@ -1,18 +1,18 @@
 use crate::core::lookup::lookup_table::LookupTableLevel;
 use crate::core::Identifier;
 
-pub struct IdentifierSearchResult<T> {
+pub struct IdentifierSearchResult {
     target: Identifier,
     level: LookupTableLevel,
-    address: T,
+    result: Identifier,
 }
 
-impl<T> IdentifierSearchResult<T> {
-    pub fn new(target: Identifier, level: LookupTableLevel, address: T) -> Self {
+impl IdentifierSearchResult {
+    pub fn new(target: Identifier, level: LookupTableLevel, result: Identifier) -> Self {
         IdentifierSearchResult {
             target,
             level,
-            address,
+            result,
         }
     }
 
@@ -24,7 +24,7 @@ impl<T> IdentifierSearchResult<T> {
         self.level
     }
 
-    pub fn result(&self) -> &T {
-        &self.address
+    pub fn result(&self) -> &Identifier {
+        &self.result
     }
 }

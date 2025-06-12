@@ -8,15 +8,15 @@ use std::fmt::Formatter;
 use std::rc::Rc;
 
 /// LocalNode is a struct that represents a single node in the local implementation of the skip graph.
-struct LocalNode {
+pub(crate) struct LocalNode {
     id: Identifier,
     mem_vec: MembershipVector,
-    lt: Box<dyn LookupTable<Rc<LocalNode>>>,
+    lt: Box<dyn LookupTable>,
 }
 
 impl Node for LocalNode {
     type Address = Rc<LocalNode>;
-
+    
     fn get_identifier(&self) -> &Identifier {
         &self.id
     }
@@ -32,7 +32,7 @@ impl Node for LocalNode {
     fn search_by_id(
         &self,
         req: &IdentifierSearchRequest,
-    ) -> anyhow::Result<IdentifierSearchResult<Self::Address>> {
+    ) -> anyhow::Result<IdentifierSearchResult> {
         // Collect neighbors from levels <= req.level in req.direction
         let mut candidates = Vec::new();
         for lvl in 0..req.level {
@@ -41,7 +41,7 @@ impl Node for LocalNode {
                     if let Some(identity) = opt {
                         // Check if the identity matches the requested identifier
                         if identity.id().eq(&req.target) {
-                            candidates.push((identity.address(), lvl));
+                            candidates.push((*identity.id(), lvl));
                         }
                     }
                 }
@@ -61,29 +61,29 @@ impl Node for LocalNode {
                 // In the left direction, the result is the smallest identifier that is greater than or equal to the target
                 candidates
                     .into_iter()
-                    .filter(|(n, _)| n.get_identifier() >= &req.target)
-                    .min_by_key(|(n, _)| *n.get_identifier())
+                    .filter(|(id, _)| id >= &req.target)
+                    .min_by_key(|(id, _)| id.clone())
             }
             Direction::Right => {
                 // In the right direction, the result is the greatest identifier that is less than or equal to the target
                 candidates
                     .into_iter()
-                    .filter(|(n, _)| n.get_identifier() <= &req.target)
-                    .max_by_key(|(n, _)| *n.get_identifier())
+                    .filter(|(id, _)| id <= &req.target)
+                    .max_by_key(|(id, _)| id.clone())
             }
         };
 
         match result {
-            Some((address, level)) => {
+            Some((id, level)) => {
                 // If a candidate is found, return it
-                Ok(IdentifierSearchResult::new(req.target, level, address))
+                Ok(IdentifierSearchResult::new(req.target, level, id))
             }
             None => {
-                // If no candidates are found, return None
+                // If no candidates are found, return its own identifier
                 Ok(IdentifierSearchResult::new(
                     req.target,
                     0,
-                    self.get_address(),
+                    self.get_identifier().clone(),
                 ))
             }
         }
@@ -92,11 +92,11 @@ impl Node for LocalNode {
     fn search_by_mem_vec(
         &self,
         _req: &IdentifierSearchRequest,
-    ) -> anyhow::Result<IdentifierSearchResult<Self::Address>> {
+    ) -> anyhow::Result<IdentifierSearchResult> {
         todo!()
     }
 
-    fn join(&self, _introducer: Self::Address) -> anyhow::Result<()> {
+    fn join(&self, introducer: Self::Address) -> anyhow::Result<()> {
         todo!()
     }
 }
@@ -137,6 +137,7 @@ mod tests {
         random_identifier, random_membership_vector, span_fixture,
     };
     use crate::core::ArrayLookupTable;
+    use crate::core::model::IDENTIFIER_SIZE_BYTES;
 
     #[test]
     fn test_local_node() {
@@ -179,11 +180,10 @@ mod tests {
         todo!()
     }
 
-    /// Test that correctly handles multiple candidates and returns the appropriate candidate 
+    /// Test that correctly handles multiple candidates and returns the appropriate candidate
     /// per direction and identifier comparison logic.
     #[test]
     fn test_search_by_id_multiple_candidates() {
         todo!()
     }
-
 }

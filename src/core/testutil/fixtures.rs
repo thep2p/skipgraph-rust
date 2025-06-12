@@ -2,14 +2,15 @@ mod test_imports {
     pub use crate::core::model::direction::Direction;
     pub use crate::core::model::identity::Identity;
     pub use crate::core::testutil::random::random_hex_str;
-    pub use crate::core::{model, Address, ArrayLookupTable, Identifier, LookupTable, MembershipVector};
+    pub use crate::core::{
+        model, Address, ArrayLookupTable, Identifier, LookupTable, MembershipVector,
+    };
     pub use rand::Rng;
 }
 
 use std::thread::JoinHandle;
 use std::time::Duration;
 use test_imports::*;
-
 
 /// Generate a random identifier.
 pub fn random_identifier() -> Identifier {
@@ -41,7 +42,7 @@ pub fn random_address() -> Address {
 }
 
 /// Generate a random network identity; ID, MembershipVector, Address.
-pub fn random_network_identity() -> Identity<Address> {
+pub fn random_identity() -> Identity {
     Identity::new(
         &random_identifier(),
         &random_membership_vector(),
@@ -50,28 +51,29 @@ pub fn random_network_identity() -> Identity<Address> {
 }
 
 /// Generate n random network identities; ID, MembershipVector, Address.
-pub fn random_network_identities(n: usize) -> Vec<Identity<Address>> {
-    (0..n).map(|_| random_network_identity()).collect()
+pub fn random_identities(n: usize) -> Vec<Identity> {
+    (0..n).map(|_| random_identity()).collect()
 }
 
 /// Generates a random lookup table with 2 * n entries (n left and n right), and n levels.
-pub fn random_network_lookup_table(n: usize) -> ArrayLookupTable<Address> {
+pub fn random_lookup_table(n: usize) -> ArrayLookupTable {
     let lt = ArrayLookupTable::new(&span_fixture());
-    let ids = random_network_identities(2 * n);
+    let ids = random_identities(2 * n);
     for i in 0..n {
         lt.update_entry(ids[i].clone(), i, Direction::Left).unwrap();
-        lt.update_entry(ids[i + n].clone(), i, Direction::Right).unwrap();
+        lt.update_entry(ids[i + n].clone(), i, Direction::Right)
+            .unwrap();
     }
     lt
 }
 
 /// Joins all threads in the given handles with a timeout.
 ///
-/// This function attempts to join each thread sequentially, waiting up to the given timeout 
-/// duration for each thread. If any thread does not complete within the remaining time budget, 
+/// This function attempts to join each thread sequentially, waiting up to the given timeout
+/// duration for each thread. If any thread does not complete within the remaining time budget,
 /// the function will immediately return an error.
 ///
-/// Note: If a timeout occurs on any thread, the function does NOT attempt to join the remaining threads; 
+/// Note: If a timeout occurs on any thread, the function does NOT attempt to join the remaining threads;
 /// it returns immediately. This means that some threads might remain unjoined if a timeout is encountered.
 ///
 /// # Arguments
@@ -85,8 +87,13 @@ pub fn random_network_lookup_table(n: usize) -> ArrayLookupTable<Address> {
 /// # Behavior
 /// The timeout is applied globally across all threads, but checked sequentially based on elapsed time.
 /// The function keeps track of elapsed time and reduces the wait time for each subsequent thread accordingly.
-pub fn join_all_with_timeout<T>(handles : Box<[JoinHandle<T>]>, timeout: Duration) -> Result<(), String>
-where T : Send + 'static {
+pub fn join_all_with_timeout<T>(
+    handles: Box<[JoinHandle<T>]>,
+    timeout: Duration,
+) -> Result<(), String>
+where
+    T: Send + 'static,
+{
     let start = std::time::Instant::now();
 
     for handle in handles {
@@ -123,7 +130,9 @@ where T : Send + 'static {
 ///   * Ok(()) if the thread finishes within the timeout.
 ///   * Err(String) if the thread takes longer than the timeout or panics.
 pub fn join_with_timeout<T>(handle: JoinHandle<T>, timeout: Duration) -> Result<(), String>
-where T : Send + 'static {
+where
+    T: Send + 'static,
+{
     let (tx, rx) = std::sync::mpsc::channel();
 
     // Spawn a thread just to join the target thread and send its result via channel
@@ -144,9 +153,9 @@ where T : Send + 'static {
 }
 
 /// Create a tracing span fixture for testing purposes.
-/// Note that this function initializes a global tracing subscriber for logging output, 
+/// Note that this function initializes a global tracing subscriber for logging output,
 /// at the DEBUG level (to avoid verbose output during tests and prolonged runtime, and hence
-/// failures due to timeouts). 
+/// failures due to timeouts).
 /// But the span itself is created at TRACE level.
 pub fn span_fixture() -> tracing::Span {
     // Initialize the global tracing subscriber for logging output.
