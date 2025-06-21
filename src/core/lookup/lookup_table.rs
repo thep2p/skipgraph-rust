@@ -28,10 +28,10 @@ pub trait LookupTable {
 
     /// Dynamically compares the lookup table with another for equality.
     fn equal(&self, other: &dyn LookupTable) -> bool;
-    
+
     /// Returns the list of left neighbors at the current node as a vector of tuples containing the level and identity.
     fn left_neighbors(&self) -> anyhow::Result<Vec<(usize, Identity)>>;
-    
+
     /// Returns the list of right neighbors at the current node as a vector of tuples containing the level and identity.
     fn right_neighbors(&self) -> anyhow::Result<Vec<(usize, Identity)>>;
 

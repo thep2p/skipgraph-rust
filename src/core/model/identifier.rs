@@ -152,7 +152,6 @@ impl Debug for Identifier {
     }
 }
 
-
 #[cfg(test)]
 mod tests {
     use super::*;

@@ -72,22 +72,21 @@ pub fn random_lookup_table(n: usize) -> ArrayLookupTable {
 /// and the right most entry is the maximum identifier and membership vector.
 /// This is useful for testing edge cases in the lookup table, basically any search for an identifier
 /// in left or right direction has a value among the neighbors on that direction.
-pub fn random_lookup_table_with_extremes(n :usize) -> ArrayLookupTable {
+pub fn random_lookup_table_with_extremes(n: usize) -> ArrayLookupTable {
     let lt = random_lookup_table(n);
     // Add extreme values to the lookup table
     let zero_id = Identifier::from_bytes(&[0u8; model::IDENTIFIER_SIZE_BYTES]).unwrap();
     let zero_mv = MembershipVector::from_bytes(&[0u8; model::IDENTIFIER_SIZE_BYTES]).unwrap();
-    
+
     let max_id = Identifier::from_bytes(&[0xFFu8; model::IDENTIFIER_SIZE_BYTES]).unwrap();
     let max_mv = MembershipVector::from_bytes(&[0xFFu8; model::IDENTIFIER_SIZE_BYTES]).unwrap();
-    
-    
+
     let zero_identity = Identity::new(&zero_id, &zero_mv, random_address());
     let max_identity = Identity::new(&max_id, &max_mv, random_address());
-    
+
     lt.update_entry(zero_identity, 0, Direction::Left).unwrap();
     lt.update_entry(max_identity, 0, Direction::Right).unwrap();
-    
+
     lt
 }
 

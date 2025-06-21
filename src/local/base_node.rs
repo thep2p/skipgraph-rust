@@ -134,8 +134,8 @@ impl Clone for LocalNode {
 mod tests {
     use super::*;
     use crate::core::testutil::fixtures::{
-        random_identifier, random_lookup_table_with_extremes,
-        random_membership_vector, span_fixture,
+        random_identifier, random_lookup_table_with_extremes, random_membership_vector,
+        span_fixture,
     };
     use crate::core::{ArrayLookupTable, LOOKUP_TABLE_LEVELS};
 
@@ -175,7 +175,8 @@ mod tests {
             let (_, expected_result) = left_neighbors
                 .iter()
                 .filter(|(lvl, id)| lvl <= &req.level() && id.id() >= req.target())
-                .min_by_key(|(id, _)| *id).unwrap();
+                .min_by_key(|(id, _)| *id)
+                .unwrap();
 
             assert_eq!(expected_result.id(), actual_result.result());
         }
