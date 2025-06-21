@@ -73,7 +73,7 @@ impl Display for ComparisonContext {
 }
 
 // Identifier represents a 32-byte unique identifier for a Skip Graph node.
-#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Clone, Copy, PartialEq, Eq)]
 pub struct Identifier([u8; IDENTIFIER_SIZE_BYTES]);
 
 impl Identifier {
@@ -149,6 +149,22 @@ impl Debug for Identifier {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         // This ensures both {:?} and {:#?} produce the same output as Display.
         write!(f, "{}", self)
+    }
+}
+
+impl PartialOrd for Identifier {
+    fn partial_cmp(&self, other: &Identifier) -> Option<std::cmp::Ordering> {
+        match self.compare(other).result {
+            CompareLess => Some(std::cmp::Ordering::Less),
+            CompareEqual => Some(std::cmp::Ordering::Equal),
+            CompareGreater => Some(std::cmp::Ordering::Greater),
+        }
+    }
+}
+
+impl Ord for Identifier {
+    fn cmp(&self, other: &Identifier) -> std::cmp::Ordering {
+        self.partial_cmp(other).unwrap()
     }
 }
 
@@ -261,6 +277,7 @@ mod tests {
         assert_eq!(comp.to_string(), "00 < 7f (at byte 0)");
 
         let comp = id_1.compare(&id_0);
+        assert!(id_1 > id_0);
         assert_eq!(CompareGreater, comp.result);
         assert_eq!(id_1, comp.left);
         assert_eq!(id_0, comp.right);

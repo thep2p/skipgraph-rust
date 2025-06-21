@@ -37,13 +37,12 @@ impl Node for LocalNode {
         let mut candidates = Vec::new();
         for lvl in 0..req.level() {
             match self.lt.get_entry(lvl, req.direction()) {
-                Ok(opt) => {
-                    if let Some(identity) = opt {
-                        // Check if the identity matches the requested identifier
-                        if identity.id().eq(req.target()) {
-                            candidates.push((*identity.id(), lvl));
-                        }
-                    }
+                Ok(Some(identity)) => {
+                    candidates.push((*identity.id(), lvl));
+                }
+                Ok(None) => {
+                    // No entry found at this level, continue to the next level
+                    continue;
                 }
                 Err(e) => {
                     return Err(anyhow::anyhow!(
@@ -175,36 +174,35 @@ mod tests {
             let (_, expected_result) = left_neighbors
                 .iter()
                 .filter(|(lvl, id)| lvl <= &req.level() && id.id() >= req.target())
-                .min_by_key(|(id, _)| *id)
-                .unwrap();
-
+                .min_by_key(|(_, id)| *id.id()).unwrap();
+            
             assert_eq!(expected_result.id(), actual_result.result());
         }
     }
-    //
-    // /// Test that returns the correct candidate when searching in the right direction,
-    // /// where the greatest identifier less than or equal to the target should be returned.
-    // #[test]
-    // fn test_search_by_id_found_right_direction() {
-    //     todo!()
-    // }
-    //
-    // /// Test that returns the node's own address when no candidates are found matching the target.
-    // #[test]
-    // fn test_search_by_id_no_candidates() {
-    //     todo!()
-    // }
-    //
-    // /// Test that returns an error when the lookup table returns an error during search at any level.
-    // #[test]
-    // fn test_search_by_id_error_propagation() {
-    //     todo!()
-    // }
-    //
-    // /// Test that correctly handles multiple candidates and returns the appropriate candidate
-    // /// per direction and identifier comparison logic.
-    // #[test]
-    // fn test_search_by_id_multiple_candidates() {
-    //     todo!()
-    // }
+    
+    /// Test that returns the correct candidate when searching in the right direction,
+    /// where the greatest identifier less than or equal to the target should be returned.
+    #[test]
+    fn test_search_by_id_found_right_direction() {
+        todo!()
+    }
+    
+    /// Test that returns the node's own address when no candidates are found matching the target.
+    #[test]
+    fn test_search_by_id_no_candidates() {
+        todo!()
+    }
+    
+    /// Test that returns an error when the lookup table returns an error during search at any level.
+    #[test]
+    fn test_search_by_id_error_propagation() {
+        todo!()
+    }
+    
+    /// Test that correctly handles multiple candidates and returns the appropriate candidate
+    /// per direction and identifier comparison logic.
+    #[test]
+    fn test_search_by_id_multiple_candidates() {
+        todo!()
+    }
 }
