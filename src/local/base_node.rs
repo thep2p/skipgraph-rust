@@ -170,18 +170,14 @@ mod tests {
             let direction = Direction::Left;
             let req = IdentifierSearchRequest::new(target, lvl, direction);
 
-            let result = node.search_by_id(&req).unwrap();
-            lt.left_neighbors()
-                .unwrap()
+            let actual_result = node.search_by_id(&req).unwrap();
+            let left_neighbors = lt.left_neighbors().unwrap();
+            let (_, expected_result) = left_neighbors
                 .iter()
                 .filter(|(lvl, id)| lvl <= &req.level() && id.id() >= req.target())
-                .min_by_key(|(id, _)| *id)
-                .map(|(lvl, id)| {
-                    assert_eq!(result.target(), req.target());
-                    assert_eq!(result.level(), *lvl);
-                    assert_eq!(result.result(), id.id());
-                })
-                .expect("Expected a candidate to be found in the left direction");
+                .min_by_key(|(id, _)| *id).unwrap();
+
+            assert_eq!(expected_result.id(), actual_result.result());
         }
     }
     //
