@@ -261,7 +261,6 @@ impl PartialEq for ArrayLookupTable {
 mod tests {
     use super::*;
     use crate::core::testutil::fixtures::*;
-    use crate::core::LOOKUP_TABLE_LEVELS;
     use std::collections::HashMap;
 
     #[test]
@@ -316,22 +315,22 @@ mod tests {
         let lt = ArrayLookupTable::new(&span_fixture());
         let id = random_identity();
 
-        let result = lt.update_entry(id.clone(), LOOKUP_TABLE_LEVELS, Direction::Left);
+        let result = lt.update_entry(id.clone(), model::IDENTIFIER_SIZE_BYTES, Direction::Left);
         assert!(result.is_err());
 
-        let result = lt.update_entry(id, LOOKUP_TABLE_LEVELS, Direction::Right);
+        let result = lt.update_entry(id, model::IDENTIFIER_SIZE_BYTES, Direction::Right);
         assert!(result.is_err());
 
-        let result = lt.get_entry(LOOKUP_TABLE_LEVELS, Direction::Left);
+        let result = lt.get_entry(model::IDENTIFIER_SIZE_BYTES, Direction::Left);
         assert!(result.is_err());
 
-        let result = lt.get_entry(LOOKUP_TABLE_LEVELS, Direction::Right);
+        let result = lt.get_entry(model::IDENTIFIER_SIZE_BYTES, Direction::Right);
         assert!(result.is_err());
 
-        let result = lt.remove_entry(LOOKUP_TABLE_LEVELS, Direction::Left);
+        let result = lt.remove_entry(model::IDENTIFIER_SIZE_BYTES, Direction::Left);
         assert!(result.is_err());
 
-        let result = lt.remove_entry(LOOKUP_TABLE_LEVELS, Direction::Right);
+        let result = lt.remove_entry(model::IDENTIFIER_SIZE_BYTES, Direction::Right);
         assert!(result.is_err());
     }
 
