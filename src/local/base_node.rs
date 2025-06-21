@@ -33,14 +33,10 @@ impl Node for LocalNode {
         &self,
         req: &IdentifierSearchRequest,
     ) -> anyhow::Result<IdentifierSearchResult> {
-        // Collect neighbors from levels <= req.level in req.direction
         let mut candidates = Vec::new();
-        for lvl in 0..req.level() {
+        for lvl in 0..=req.level() {
             match self.lt.get_entry(lvl, req.direction()) {
-                Ok(Some(identity)) => {
-                    // Check if the identity matches the requested identifier
-                    candidates.push((*identity.id(), lvl));
-                }
+                Ok(Some(identity)) => candidates.push((*identity.id(), lvl)),
                 Ok(None) => {}
                 Err(e) => {
                     return Err(anyhow::anyhow!(
@@ -52,37 +48,24 @@ impl Node for LocalNode {
             }
         }
 
-        // Filter candidates based on the direction
         let result = match req.direction() {
-            Direction::Left => {
-                // In the left direction, the result is the smallest identifier that is greater than or equal to the target
-                candidates
-                    .into_iter()
-                    .filter(|(id, _)| id >= req.target())
-                    .min_by_key(|(id, _)| *id)
-            }
-            Direction::Right => {
-                // In the right direction, the result is the greatest identifier that is less than or equal to the target
-                candidates
-                    .into_iter()
-                    .filter(|(id, _)| id <= req.target())
-                    .max_by_key(|(id, _)| *id)
-            }
+            Direction::Left => candidates
+                .into_iter()
+                .filter(|(id, _)| id >= req.target())
+                .min_by_key(|(id, _)| *id),
+            Direction::Right => candidates
+                .into_iter()
+                .filter(|(id, _)| id <= req.target())
+                .max_by_key(|(id, _)| *id),
         };
 
         match result {
-            Some((id, level)) => {
-                // If a candidate is found, return it
-                Ok(IdentifierSearchResult::new(*req.target(), level, id))
-            }
-            None => {
-                // If no candidates are found, return its own identifier
-                Ok(IdentifierSearchResult::new(
-                    *req.target(),
-                    0,
-                    *self.get_identifier(),
-                ))
-            }
+            Some((id, level)) => Ok(IdentifierSearchResult::new(*req.target(), level, id)),
+            None => Ok(IdentifierSearchResult::new(
+                *req.target(),
+                0,
+                *self.get_identifier(),
+            )),
         }
     }
 
@@ -169,13 +152,16 @@ mod tests {
 
             let actual_result = node.search_by_id(&req).unwrap();
             let left_neighbors = lt.left_neighbors().unwrap();
-            let (_, expected_result) = left_neighbors
+            left_neighbors
                 .iter()
                 .filter(|(lvl, id)| lvl <= &req.level() && id.id() >= req.target())
                 .min_by_key(|(_, id)| *id.id())
-                .unwrap();
-
-            assert_eq!(expected_result.id(), actual_result.result());
+                .map(|(lvl, id)| {
+                    assert_eq!(actual_result.target(), req.target());
+                    assert_eq!(actual_result.level(), *lvl);
+                    assert_eq!(actual_result.result(), id.id());
+                })
+                .expect("Expected a candidate to be found in the left direction");
         }
     }
     //
