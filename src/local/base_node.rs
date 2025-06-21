@@ -37,14 +37,11 @@ impl Node for LocalNode {
         let mut candidates = Vec::new();
         for lvl in 0..req.level() {
             match self.lt.get_entry(lvl, req.direction()) {
-                Ok(opt) => {
-                    if let Some(identity) = opt {
-                        // Check if the identity matches the requested identifier
-                        if identity.id().eq(req.target()) {
-                            candidates.push((*identity.id(), lvl));
-                        }
-                    }
+                Ok(Some(identity)) => {
+                    // Check if the identity matches the requested identifier
+                    candidates.push((*identity.id(), lvl));
                 }
+                Ok(None) => {}
                 Err(e) => {
                     return Err(anyhow::anyhow!(
                         "Error while searching by id in level {}: {}",
@@ -175,7 +172,7 @@ mod tests {
             let (_, expected_result) = left_neighbors
                 .iter()
                 .filter(|(lvl, id)| lvl <= &req.level() && id.id() >= req.target())
-                .min_by_key(|(id, _)| *id)
+                .min_by_key(|(_, id)| *id.id())
                 .unwrap();
 
             assert_eq!(expected_result.id(), actual_result.result());
