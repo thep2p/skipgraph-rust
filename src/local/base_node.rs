@@ -132,10 +132,9 @@ impl Clone for LocalNode {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::core::model::identity::Identity;
     use crate::core::testutil::fixtures::{
-        random_address, random_identifier, random_lookup_table_with_extremes,
-        random_membership_vector, span_fixture,
+        random_identifier, random_lookup_table_with_extremes, random_membership_vector,
+        span_fixture,
     };
     use crate::core::{ArrayLookupTable, LOOKUP_TABLE_LEVELS};
 
@@ -171,9 +170,9 @@ mod tests {
             let req = IdentifierSearchRequest::new(target, lvl, direction);
 
             let actual_result = node.search_by_id(&req).unwrap();
-            
+
             // Find the expected identifier by filtering neighbors at or below the requested level
-            let (expected_lvl , expected_id) = lt
+            let (expected_lvl, expected_id) = lt
                 .left_neighbors()
                 .unwrap()
                 .iter()
@@ -196,15 +195,15 @@ mod tests {
     //         mem_vec: random_membership_vector(),
     //         lt: Box::new(lt.clone()),
     //     };
-    // 
+    //
     //     // Iterate through each level and perform a search
     //     for lvl in 0..LOOKUP_TABLE_LEVELS {
     //         let target = random_identifier();
     //         let direction = Direction::Right;
     //         let req = IdentifierSearchRequest::new(target, lvl, direction);
-    // 
+    //
     //         let actual_result = node.search_by_id(&req).unwrap();
-    // 
+    //
     //         let mut candidates = vec![];
     //         for l in 0..req.level() {
     //             if let Ok(Some(identity)) = lt.get_entry(l, direction) {
@@ -216,11 +215,11 @@ mod tests {
     //             .filter(|(id, _)| id <= req.target())
     //             .max_by_key(|(id, _)| *id);
     //         let expected_id = expected.map(|(id, _)| id).unwrap_or(*node.get_identifier());
-    // 
+    //
     //         assert_eq!(expected_id, *actual_result.result());
     //     }
     // }
-    // 
+    //
     // /// Test that returns the node's own address when no candidates are found matching the target.
     // #[test]
     // fn test_search_by_id_no_candidates() {
@@ -230,15 +229,15 @@ mod tests {
     //         mem_vec: random_membership_vector(),
     //         lt: Box::new(lt),
     //     };
-    // 
+    //
     //     let target = random_identifier();
     //     let direction = Direction::Left;
     //     let req = IdentifierSearchRequest::new(target, 5, direction);
-    // 
+    //
     //     let res = node.search_by_id(&req).unwrap();
     //     assert_eq!(*node.get_identifier(), *res.result());
     // }
-    // 
+    //
     // /// Test that returns an error when the lookup table returns an error during search at any level.
     // #[test]
     // fn test_search_by_id_error_propagation() {
@@ -252,11 +251,11 @@ mod tests {
     //         ) -> anyhow::Result<()> {
     //             Ok(())
     //         }
-    // 
+    //
     //         fn remove_entry(&self, _level: usize, _direction: Direction) -> anyhow::Result<()> {
     //             Ok(())
     //         }
-    // 
+    //
     //         fn get_entry(
     //             &self,
     //             _level: usize,
@@ -264,65 +263,65 @@ mod tests {
     //         ) -> anyhow::Result<Option<Identity>> {
     //             Err(anyhow::anyhow!("lookup failure"))
     //         }
-    // 
+    //
     //         fn equal(&self, _other: &dyn LookupTable) -> bool {
     //             false
     //         }
-    // 
+    //
     //         fn left_neighbors(&self) -> anyhow::Result<Vec<(usize, Identity)>> {
     //             Ok(vec![])
     //         }
-    // 
+    //
     //         fn right_neighbors(&self) -> anyhow::Result<Vec<(usize, Identity)>> {
     //             Ok(vec![])
     //         }
-    // 
+    //
     //         fn clone_box(&self) -> Box<dyn LookupTable> {
     //             Box::new(FaultyLookupTable)
     //         }
     //     }
-    // 
+    //
     //     let node = LocalNode {
     //         id: random_identifier(),
     //         mem_vec: random_membership_vector(),
     //         lt: Box::new(FaultyLookupTable),
     //     };
-    // 
+    //
     //     let req = IdentifierSearchRequest::new(random_identifier(), 3, Direction::Left);
     //     let result = node.search_by_id(&req);
     //     assert!(result.is_err());
     // }
-    // 
+    //
     // /// Test that correctly handles multiple candidates and returns the appropriate candidate
     // /// per direction and identifier comparison logic.
     // #[test]
     // fn test_search_by_id_multiple_candidates() {
     //     let lt = ArrayLookupTable::new(&span_fixture());
-    // 
+    //
     //     // Create deterministic identifiers for clarity
     //     let id1 = Identifier::from_bytes(&[10]).unwrap();
     //     let id2 = Identifier::from_bytes(&[20]).unwrap();
     //     let id3 = Identifier::from_bytes(&[30]).unwrap();
     //     let mv = random_membership_vector();
     //     let addr = random_address();
-    // 
+    //
     //     lt.update_entry(Identity::new(&id1, &mv, addr), 0, Direction::Right)
     //         .unwrap();
     //     lt.update_entry(Identity::new(&id2, &mv, addr), 1, Direction::Right)
     //         .unwrap();
     //     lt.update_entry(Identity::new(&id3, &mv, addr), 2, Direction::Right)
     //         .unwrap();
-    // 
+    //
     //     let node = LocalNode {
     //         id: random_identifier(),
     //         mem_vec: mv,
     //         lt: Box::new(lt),
     //     };
-    // 
+    //
     //     let target = Identifier::from_bytes(&[25]).unwrap();
     //     let req = IdentifierSearchRequest::new(target, 3, Direction::Right);
     //     let result = node.search_by_id(&req).unwrap();
-    // 
+    //
     //     assert_eq!(id2, *result.result());
     // }
 }

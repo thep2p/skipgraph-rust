@@ -152,19 +152,19 @@ impl Debug for Identifier {
     }
 }
 
-impl PartialOrd for Identifier {
-    fn partial_cmp(&self, other: &Identifier) -> Option<std::cmp::Ordering> {
+impl Ord for Identifier {
+    fn cmp(&self, other: &Identifier) -> std::cmp::Ordering {
         match self.compare(other).result {
-            CompareLess => Some(std::cmp::Ordering::Less),
-            CompareEqual => Some(std::cmp::Ordering::Equal),
-            CompareGreater => Some(std::cmp::Ordering::Greater),
+            CompareLess => std::cmp::Ordering::Less,
+            CompareEqual => std::cmp::Ordering::Equal,
+            CompareGreater => std::cmp::Ordering::Greater,
         }
     }
 }
 
-impl Ord for Identifier {
-    fn cmp(&self, other: &Identifier) -> std::cmp::Ordering {
-        self.partial_cmp(other).unwrap()
+impl PartialOrd for Identifier {
+    fn partial_cmp(&self, other: &Identifier) -> Option<std::cmp::Ordering> {
+        Some(self.cmp(other))
     }
 }
 
