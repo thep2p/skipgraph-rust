@@ -248,6 +248,7 @@ mod tests {
 
         // each id is equal to itself
         let comp = id_0.compare(&id_0);
+        assert_eq!(id_0, id_0);
         assert_eq!(CompareEqual, comp.result);
         assert_eq!(id_0, comp.left);
         assert_eq!(id_0, comp.right);
@@ -255,6 +256,7 @@ mod tests {
         assert_eq!(comp.to_string(), format!("{} == {}", id_0, id_0));
 
         let comp = id_1.compare(&id_1);
+        assert_eq!(id_1, id_1);
         assert_eq!(CompareEqual, comp.result);
         assert_eq!(id_1, comp.left);
         assert_eq!(id_1, comp.right);
@@ -262,6 +264,7 @@ mod tests {
         assert_eq!(comp.to_string(), format!("{} == {}", id_1, id_1));
 
         let comp = id_2.compare(&id_2);
+        assert_eq!(id_2, id_2);
         assert_eq!(CompareEqual, comp.result);
         assert_eq!(id_2, comp.left);
         assert_eq!(id_2, comp.right);
@@ -270,6 +273,7 @@ mod tests {
 
         // id_0 < id_1
         let comp = id_0.compare(&id_1);
+        assert!(id_0 < id_1);
         assert_eq!(CompareLess, comp.result);
         assert_eq!(id_0, comp.left);
         assert_eq!(id_1, comp.right);
@@ -286,6 +290,7 @@ mod tests {
 
         // id_1 < id_2
         let comp = id_1.compare(&id_2);
+        assert!(id_1 < id_2);
         assert_eq!(CompareLess, comp.result);
         assert_eq!(id_1, comp.left);
         assert_eq!(id_2, comp.right);
@@ -293,6 +298,7 @@ mod tests {
         assert_eq!(comp.to_string(), "7f < ff (at byte 0)");
 
         let comp = id_2.compare(&id_1);
+        assert!(id_2 > id_1);
         assert_eq!(CompareGreater, comp.result);
         assert_eq!(id_2, comp.left);
         assert_eq!(id_1, comp.right);
@@ -301,6 +307,7 @@ mod tests {
 
         // id_0 < id_2
         let comp = id_0.compare(&id_2);
+        assert!(id_0 < id_2);
         assert_eq!(CompareLess, comp.result);
         assert_eq!(id_0, comp.left);
         assert_eq!(id_2, comp.right);
@@ -308,6 +315,7 @@ mod tests {
         assert_eq!(comp.to_string(), "00 < ff (at byte 0)");
 
         let comp = id_2.compare(&id_0);
+        assert!(id_2 > id_0);
         assert_eq!(CompareGreater, comp.result);
         assert_eq!(id_2, comp.left);
         assert_eq!(id_0, comp.right);
@@ -328,6 +336,7 @@ mod tests {
 
         // each identifier is equal to itself
         let comp = id_random_greater.compare(&id_random_greater);
+        assert_eq!(id_random_greater, id_random_greater);
         assert_eq!(CompareEqual, comp.result);
         assert_eq!(id_random_greater, comp.left);
         assert_eq!(id_random_greater, comp.right);
@@ -338,6 +347,7 @@ mod tests {
         );
 
         let comp = id_random_less.compare(&id_random_less);
+        assert_eq!(id_random_less, id_random_less);
         assert_eq!(CompareEqual, comp.result);
         assert_eq!(id_random_less, comp.left);
         assert_eq!(id_random_less, comp.right);
@@ -345,6 +355,7 @@ mod tests {
 
         // id_random_greater > id_random_less
         let comp = id_random_greater.compare(&id_random_less);
+        assert!(id_random_greater > id_random_less);
         assert_eq!(CompareGreater, comp.result);
         assert_eq!(id_random_greater, comp.left);
         assert_eq!(id_random_less, comp.right);
@@ -361,6 +372,7 @@ mod tests {
 
         // id_random_less < id_random_greater
         let comp = id_random_less.compare(&id_random_greater);
+        assert!(id_random_less < id_random_greater);
         assert_eq!(CompareLess, comp.result);
         assert_eq!(id_random_less, comp.left);
         assert_eq!(id_random_greater, comp.right);
