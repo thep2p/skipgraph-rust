@@ -179,9 +179,9 @@ mod tests {
                 .iter()
                 .filter(|(lvl, id)| lvl <= &req.level && id.id() >= req.target())
                 .min_by_key(|(_, id)| *id.id())
-                .map(|(lvl, id)| (lvl, *id.id()))
+                .map(|(lvl, id)| (*lvl, *id.id()))
                 .unwrap();
-
+            assert_eq!(expected_lvl, req.level);
             assert_eq!(expected_id, *actual_result.result());
         }
     }
