@@ -132,9 +132,12 @@ impl Clone for LocalNode {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::core::testutil::fixtures::{random_address, random_identifier, random_identifier_greater_than, random_lookup_table_with_extremes, random_membership_vector, span_fixture};
-    use crate::core::{ArrayLookupTable, LOOKUP_TABLE_LEVELS};
     use crate::core::model::identity::Identity;
+    use crate::core::testutil::fixtures::{
+        random_address, random_identifier, random_identifier_greater_than,
+        random_lookup_table_with_extremes, random_membership_vector, span_fixture,
+    };
+    use crate::core::{ArrayLookupTable, LOOKUP_TABLE_LEVELS};
 
     #[test]
     fn test_local_node() {
@@ -155,6 +158,52 @@ mod tests {
     /// where the smallest identifier greater than or equal to the target should be returned.
     #[test]
     fn test_search_by_id_found_left_direction() {
+        for lvl in 0..LOOKUP_TABLE_LEVELS {
+            let lt = random_lookup_table_with_extremes(LOOKUP_TABLE_LEVELS);
+            let target = random_identifier();
+
+            // Generate a random identifier greater than the target to ensure we have a candidate
+            // Puts the candidate in the left direction at zero level
+            let safe_neighbor = random_identifier_greater_than(&target);
+            lt.update_entry(
+                Identity::new(
+                    &safe_neighbor,
+                    &random_membership_vector(),
+                    random_address(),
+                ),
+                0,
+                Direction::Left,
+            )
+            .expect("Failed to update entry in lookup table");
+
+            let node = LocalNode {
+                id: random_identifier(),
+                mem_vec: random_membership_vector(),
+                lt: Box::new(lt.clone()),
+            };
+
+            let direction = Direction::Left;
+            let req = IdentifierSearchRequest::new(target, lvl, direction);
+
+            let actual_result = node.search_by_id(&req).unwrap();
+
+            let (expected_lvl, expected_identity) = lt
+                .left_neighbors()
+                .unwrap()
+                .into_iter()
+                .filter(|(l, id)| *l <= req.level && id.id() >= req.target())
+                .min_by_key(|(_, id)| *id.id())
+                .unwrap();
+
+            assert_eq!(expected_lvl, actual_result.level());
+            assert_eq!(*expected_identity.id(), *actual_result.result());
+        }
+    }
+
+    /// Test that returns the correct candidate when searching in the right direction,
+    /// where the greatest identifier less than or equal to the target should be returned.
+    #[test]
+    fn test_search_by_id_found_right_direction() {
         let lt = random_lookup_table_with_extremes(LOOKUP_TABLE_LEVELS);
         let node = LocalNode {
             id: random_identifier(),
@@ -162,29 +211,20 @@ mod tests {
             lt: Box::new(lt.clone()),
         };
 
+        // Iterate through each level and perform a search
         for lvl in 0..LOOKUP_TABLE_LEVELS {
             let target = random_identifier();
-            
-            // Generate a random identifier greater than the target to ensure we have a candidate
-            // Puts the candidate in the left direction at zero level
-            let safe_neighbor = random_identifier_greater_than(&target);
-            lt.update_entry(
-                Identity::new(&safe_neighbor, &random_membership_vector(), random_address()),
-                0,
-                Direction::Left,
-            ).expect("Failed to update entry in lookup table");
-            
-            let direction = Direction::Left;
+            let direction = Direction::Right;
             let req = IdentifierSearchRequest::new(target, lvl, direction);
 
             let actual_result = node.search_by_id(&req).unwrap();
 
             let expected = lt
-                .left_neighbors()
+                .right_neighbors()
                 .unwrap()
                 .into_iter()
-                .filter(|(l, id)| *l <= req.level && id.id() >= req.target())
-                .min_by_key(|(_, id)| *id.id());
+                .filter(|(lvl, id)| *lvl <= req.level() && id.id() <= req.target())
+                .max_by_key(|(_, id)| *id.id());
 
             match expected {
                 Some((expected_lvl, expected_identity)) => {
@@ -199,148 +239,8 @@ mod tests {
         }
     }
 
-    /// Test that returns the correct candidate when searching in the right direction,
-    /// where the greatest identifier less than or equal to the target should be returned.
-    #[test]
-    fn test_search_by_id_found_right_direction() {
-        let lt = random_lookup_table_with_extremes(LOOKUP_TABLE_LEVELS);
-        let node = LocalNode {
-            id: random_identifier(),
-            mem_vec: random_membership_vector(),
-            lt: Box::new(lt.clone()),
-        };
-    
-        // Iterate through each level and perform a search
-        for lvl in 0..LOOKUP_TABLE_LEVELS {
-            let target = random_identifier();
-            let direction = Direction::Right;
-            let req = IdentifierSearchRequest::new(target, lvl, direction);
-    
-            let actual_result = node.search_by_id(&req).unwrap();
-    
-            
-            let expected = lt
-                .right_neighbors()
-                .unwrap()
-                .into_iter()
-                .filter(|(lvl, id)| *lvl <= req.level() && id.id() <= req.target())
-                .max_by_key(|(_, id)| *id.id());
-            
-            match expected { 
-                Some((expected_lvl, expected_identity)) => {
-                    assert_eq!(expected_lvl, actual_result.level());
-                    assert_eq!(*expected_identity.id(), *actual_result.result());
-                }
-                None => {
-                    assert_eq!(0, actual_result.level());
-                    assert_eq!(*node.get_identifier(), *actual_result.result());
-                }
-            }
-        }
-    }
-    
-    // /// Test that returns the node's own address when no candidates are found matching the target.
-    // #[test]
-    // fn test_search_by_id_no_candidates() {
-    //     let lt = ArrayLookupTable::new(&span_fixture());
-    //     let node = LocalNode {
-    //         id: random_identifier(),
-    //         mem_vec: random_membership_vector(),
-    //         lt: Box::new(lt),
-    //     };
-    // 
-    //     let target = random_identifier();
-    //     let direction = Direction::Left;
-    //     let req = IdentifierSearchRequest::new(target, , direction);
-    // 
-    //     let res = node.search_by_id(&req).unwrap();
-    //     assert_eq!(*node.get_identifier(), *res.result());
-    // }
-    // 
-    // /// Test that returns an error when the lookup table returns an error during search at any level.
-    // #[test]
-    // fn test_search_by_id_error_propagation() {
-    //     struct FaultyLookupTable;
-    //     impl LookupTable for FaultyLookupTable {
-    //         fn update_entry(
-    //             &self,
-    //             _identity: Identity,
-    //             _level: usize,
-    //             _direction: Direction,
-    //         ) -> anyhow::Result<()> {
-    //             Ok(())
-    //         }
-    //
-    //         fn remove_entry(&self, _level: usize, _direction: Direction) -> anyhow::Result<()> {
-    //             Ok(())
-    //         }
-    //
-    //         fn get_entry(
-    //             &self,
-    //             _level: usize,
-    //             _direction: Direction,
-    //         ) -> anyhow::Result<Option<Identity>> {
-    //             Err(anyhow::anyhow!("lookup failure"))
-    //         }
-    //
-    //         fn equal(&self, _other: &dyn LookupTable) -> bool {
-    //             false
-    //         }
-    //
-    //         fn left_neighbors(&self) -> anyhow::Result<Vec<(usize, Identity)>> {
-    //             Ok(vec![])
-    //         }
-    //
-    //         fn right_neighbors(&self) -> anyhow::Result<Vec<(usize, Identity)>> {
-    //             Ok(vec![])
-    //         }
-    //
-    //         fn clone_box(&self) -> Box<dyn LookupTable> {
-    //             Box::new(FaultyLookupTable)
-    //         }
-    //     }
-    //
-    //     let node = LocalNode {
-    //         id: random_identifier(),
-    //         mem_vec: random_membership_vector(),
-    //         lt: Box::new(FaultyLookupTable),
-    //     };
-    //
-    //     let req = IdentifierSearchRequest::new(random_identifier(), 3, Direction::Left);
-    //     let result = node.search_by_id(&req);
-    //     assert!(result.is_err());
-    // }
-    //
-    // /// Test that correctly handles multiple candidates and returns the appropriate candidate
-    // /// per direction and identifier comparison logic.
-    // #[test]
-    // fn test_search_by_id_multiple_candidates() {
-    //     let lt = ArrayLookupTable::new(&span_fixture());
-    //
-    //     // Create deterministic identifiers for clarity
-    //     let id1 = Identifier::from_bytes(&[10]).unwrap();
-    //     let id2 = Identifier::from_bytes(&[20]).unwrap();
-    //     let id3 = Identifier::from_bytes(&[30]).unwrap();
-    //     let mv = random_membership_vector();
-    //     let addr = random_address();
-    //
-    //     lt.update_entry(Identity::new(&id1, &mv, addr), 0, Direction::Right)
-    //         .unwrap();
-    //     lt.update_entry(Identity::new(&id2, &mv, addr), 1, Direction::Right)
-    //         .unwrap();
-    //     lt.update_entry(Identity::new(&id3, &mv, addr), 2, Direction::Right)
-    //         .unwrap();
-    //
-    //     let node = LocalNode {
-    //         id: random_identifier(),
-    //         mem_vec: mv,
-    //         lt: Box::new(lt),
-    //     };
-    //
-    //     let target = Identifier::from_bytes(&[25]).unwrap();
-    //     let req = IdentifierSearchRequest::new(target, 3, Direction::Right);
-    //     let result = node.search_by_id(&req).unwrap();
-    //
-    //     assert_eq!(id2, *result.result());
-    // }
+    // TODO: test that returns the node's own address when no candidates are found matching the target (left/right direction).
+    // TODO: test that returns an error when the lookup table returns an error during search at any level.
+    // TODO: test that when the exact target is found, it returns the correct level and identifier.
+    // TODO: concurrent tests for search_by_id to ensure thread safety and correctness under concurrent access.
 }
