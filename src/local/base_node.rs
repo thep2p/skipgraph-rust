@@ -35,7 +35,7 @@ impl Node for LocalNode {
     ) -> anyhow::Result<IdentifierSearchResult> {
         // Collect neighbors from levels <= req.level in req.direction
         let mut candidates = Vec::new();
-        for lvl in 0..req.level() {
+        for lvl in 0..=req.level() {
             match self.lt.get_entry(lvl, req.direction()) {
                 Ok(Some(identity)) => {
                     candidates.push((*identity.id(), lvl));
@@ -171,17 +171,23 @@ mod tests {
 
             let actual_result = node.search_by_id(&req).unwrap();
 
-            // Find the expected identifier by filtering neighbors at or below the requested level
-            let (expected_lvl, expected_id) = lt
+            let expected = lt
                 .left_neighbors()
                 .unwrap()
-                .iter()
-                .filter(|(lvl, id)| lvl <= &req.level && id.id() >= req.target())
-                .min_by_key(|(_, id)| *id.id())
-                .map(|(lvl, id)| (*lvl, *id.id()))
-                .unwrap();
-            assert_eq!(expected_lvl, req.level);
-            assert_eq!(expected_id, *actual_result.result());
+                .into_iter()
+                .filter(|(l, id)| *l <= req.level && id.id() >= req.target())
+                .min_by_key(|(_, id)| *id.id());
+
+            match expected {
+                Some((expected_lvl, expected_identity)) => {
+                    assert_eq!(expected_lvl, actual_result.level());
+                    assert_eq!(*expected_identity.id(), *actual_result.result());
+                }
+                None => {
+                    assert_eq!(0, actual_result.level());
+                    assert_eq!(*node.get_identifier(), *actual_result.result());
+                }
+            }
         }
     }
 
