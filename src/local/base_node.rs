@@ -133,10 +133,7 @@ impl Clone for LocalNode {
 mod tests {
     use super::*;
     use crate::core::model::identity::Identity;
-    use crate::core::testutil::fixtures::{
-        random_address, random_identifier, random_identifier_greater_than,
-        random_lookup_table_with_extremes, random_membership_vector, span_fixture,
-    };
+    use crate::core::testutil::fixtures::{random_address, random_identifier, random_identifier_greater_than, random_identifier_less_than, random_lookup_table_with_extremes, random_membership_vector, span_fixture};
     use crate::core::{ArrayLookupTable, LOOKUP_TABLE_LEVELS};
 
     #[test]
@@ -191,7 +188,7 @@ mod tests {
                 .left_neighbors()
                 .unwrap()
                 .into_iter()
-                .filter(|(l, id)| *l <= req.level && id.id() >= req.target())
+                .filter(|(l, id)| *l <= req.level() && id.id() >= req.target())
                 .min_by_key(|(_, id)| *id.id())
                 .unwrap();
 
@@ -204,38 +201,44 @@ mod tests {
     /// where the greatest identifier less than or equal to the target should be returned.
     #[test]
     fn test_search_by_id_found_right_direction() {
-        let lt = random_lookup_table_with_extremes(LOOKUP_TABLE_LEVELS);
-        let node = LocalNode {
-            id: random_identifier(),
-            mem_vec: random_membership_vector(),
-            lt: Box::new(lt.clone()),
-        };
-
         // Iterate through each level and perform a search
         for lvl in 0..LOOKUP_TABLE_LEVELS {
+            let lt = random_lookup_table_with_extremes(LOOKUP_TABLE_LEVELS);
             let target = random_identifier();
+
+            // Generate a random identifier less than the target to ensure we have a candidate
+            // Puts the candidate in the right direction at zero level
+            let safe_neighbor = random_identifier_less_than(&target);
+            lt.update_entry(
+                Identity::new(
+                    &safe_neighbor,
+                    &random_membership_vector(),
+                    random_address(),
+                ),
+                0,
+                Direction::Right,
+            ).expect("Failed to update entry in lookup table");
+
             let direction = Direction::Right;
             let req = IdentifierSearchRequest::new(target, lvl, direction);
 
+            let node = LocalNode {
+                id: random_identifier(),
+                mem_vec: random_membership_vector(),
+                lt: Box::new(lt.clone()),
+            };
+
             let actual_result = node.search_by_id(&req).unwrap();
 
-            let expected = lt
+            let (expected_lvl, expected_identity) = lt
                 .right_neighbors()
                 .unwrap()
                 .into_iter()
                 .filter(|(lvl, id)| *lvl <= req.level() && id.id() <= req.target())
-                .max_by_key(|(_, id)| *id.id());
+                .max_by_key(|(_, id)| *id.id()).unwrap();
 
-            match expected {
-                Some((expected_lvl, expected_identity)) => {
-                    assert_eq!(expected_lvl, actual_result.level());
-                    assert_eq!(*expected_identity.id(), *actual_result.result());
-                }
-                None => {
-                    assert_eq!(0, actual_result.level());
-                    assert_eq!(*node.get_identifier(), *actual_result.result());
-                }
-            }
+            assert_eq!(expected_lvl, actual_result.level());
+            assert_eq!(*expected_identity.id(), *actual_result.result());
         }
     }
 
