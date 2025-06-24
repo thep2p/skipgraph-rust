@@ -5,8 +5,8 @@ use anyhow::anyhow;
 use std::fmt;
 use std::fmt::{Debug, Display, Formatter};
 
-pub const ZERO: Identifier = Identifier([0; IDENTIFIER_SIZE_BYTES]);
-pub const MAX: Identifier = Identifier([255; IDENTIFIER_SIZE_BYTES]);
+pub const ZERO: Identifier = Identifier([0u8; IDENTIFIER_SIZE_BYTES]);
+pub const MAX: Identifier = Identifier([255u8; IDENTIFIER_SIZE_BYTES]);
 
 /// ComparisonResult represents the result of comparing two identifiers.
 /// It can be one of the following:
@@ -138,18 +138,6 @@ impl Identifier {
     pub fn to_bytes(&self) -> Vec<u8> {
         self.0.to_vec()
     }
-
-    /// Returns true if the identifier is zero, i.e., all bytes are zero.
-    /// Otherwise, returns false.
-    pub fn is_zero(&self) -> bool {
-        self.0.iter().all(|&byte| byte == 0)
-    }
-
-    /// Returns true if the identifier is the maximum value, i.e., all bytes are 255.
-    /// Otherwise, returns false.
-    pub fn is_max(&self) -> bool {
-        self.0.iter().all(|&byte| byte == 255)
-    }
 }
 
 impl Display for Identifier {
@@ -255,6 +243,35 @@ mod tests {
         assert!(Identifier::from_string(&s).is_err())
     }
 
+    /// Test function `test_identifier_compare` verifies the behavior and correctness of the `Identifier`
+    /// comparison functionality implemented in the system. It tests various comparison scenarios including:
+    ///
+    /// 1. Equality comparisons for identifiers that are identical.
+    /// 2. Ordering comparisons (less than, greater than) between identifiers with different values.
+    /// 3. Single-byte differences between two identifiers at a specific index.
+    ///
+    /// The test ensures that all aspects of the `compare` method are working as intended,
+    /// including:
+    /// - Determining the comparison result (`CompareEqual`, `CompareLess`, `CompareGreater`).
+    /// - Validating that the left-hand side and right-hand side values are accurately assigned.
+    /// - Identifying the first differing byte index when applicable.
+    /// - Properly formatting the comparison result string.
+    ///
+    /// Specifically:
+    /// - It creates multiple `Identifier` instances with predefined and random values.
+    /// - Asserts that identifiers are equal to themselves.
+    /// - Validates comparisons between identifiers, ensuring the results and metadata (e.g., differing byte index)
+    ///   meet expectations.
+    /// - Tests comparisons of identifiers generated with random byte sequences that differ only at
+    ///   a specific location.
+    ///
+    /// Examples of tested comparisons:
+    /// - Equality: Verifies that `id_0.compare(&id_0)` correctly determines equality (`id_0 == id_0`).
+    /// - Ordering: Verifies relationships like `id_0 < id_1` and `id_1 > id_0`.
+    /// - Single-byte difference: Confirms correctness for identifiers differing by a single byte, ensuring the differing
+    ///   byte index is identified and result is consistent.
+    ///
+    /// This ensures the integrity and performance of the `Identifier` comparison logic across edge cases.
     #[test]
     fn test_identifier_compare() {
         let id_0 = Identifier::from_bytes(&[0u8; model::IDENTIFIER_SIZE_BYTES]).unwrap();
@@ -409,23 +426,5 @@ mod tests {
         let id_str = id.to_string();
         let id_from_str = Identifier::from_string(&id_str).unwrap();
         assert_eq!(id, id_from_str);
-    }
-
-    #[test]
-    fn test_identifier_is_zero() {
-        let id_zero = Identifier::from_bytes(&[0u8; IDENTIFIER_SIZE_BYTES]).unwrap();
-        assert!(id_zero.is_zero());
-
-        let id_non_zero = Identifier::from_bytes(&[1u8; IDENTIFIER_SIZE_BYTES]).unwrap();
-        assert!(!id_non_zero.is_zero());
-    }
-
-    #[test]
-    fn test_identifier_is_max() {
-        let id_max = Identifier::from_bytes(&[255u8; IDENTIFIER_SIZE_BYTES]).unwrap();
-        assert!(id_max.is_max());
-
-        let id_non_max = Identifier::from_bytes(&[254u8; IDENTIFIER_SIZE_BYTES]).unwrap();
-        assert!(!id_non_max.is_max());
     }
 }
