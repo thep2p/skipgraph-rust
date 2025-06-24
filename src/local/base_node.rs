@@ -240,11 +240,11 @@ mod tests {
     //         mem_vec: random_membership_vector(),
     //         lt: Box::new(lt),
     //     };
-    //
+    // 
     //     let target = random_identifier();
     //     let direction = Direction::Left;
-    //     let req = IdentifierSearchRequest::new(target, 5, direction);
-    //
+    //     let req = IdentifierSearchRequest::new(target, , direction);
+    // 
     //     let res = node.search_by_id(&req).unwrap();
     //     assert_eq!(*node.get_identifier(), *res.result());
     // }

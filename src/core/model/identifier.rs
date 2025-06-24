@@ -5,6 +5,9 @@ use anyhow::anyhow;
 use std::fmt;
 use std::fmt::{Debug, Display, Formatter};
 
+pub const ZERO: Identifier = Identifier([0; IDENTIFIER_SIZE_BYTES]);
+pub const MAX: Identifier = Identifier([255; IDENTIFIER_SIZE_BYTES]);
+
 /// ComparisonResult represents the result of comparing two identifiers.
 /// It can be one of the following:
 /// - CompareGreater: the left identifier is greater than the right identifier.
@@ -135,13 +138,13 @@ impl Identifier {
     pub fn to_bytes(&self) -> Vec<u8> {
         self.0.to_vec()
     }
-    
+
     /// Returns true if the identifier is zero, i.e., all bytes are zero.
     /// Otherwise, returns false.
     pub fn is_zero(&self) -> bool {
         self.0.iter().all(|&byte| byte == 0)
     }
-    
+
     /// Returns true if the identifier is the maximum value, i.e., all bytes are 255.
     /// Otherwise, returns false.
     pub fn is_max(&self) -> bool {
@@ -183,7 +186,7 @@ impl PartialOrd for Identifier {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::core::testutil::fixtures::random_membership_vector;
+    use crate::core::testutil::fixtures::random_identifier;
     use crate::core::testutil::random::random_hex_str;
     use crate::core::testutil::*;
 
@@ -402,11 +405,12 @@ mod tests {
 
     #[test]
     fn test_identifier_to_string() {
-        let id = random_membership_vector();
+        let id = random_identifier();
         let id_str = id.to_string();
-        println!("{}", id_str);
+        let id_from_str = Identifier::from_string(&id_str).unwrap();
+        assert_eq!(id, id_from_str);
     }
-    
+
     #[test]
     fn test_identifier_is_zero() {
         let id_zero = Identifier::from_bytes(&[0u8; IDENTIFIER_SIZE_BYTES]).unwrap();
@@ -415,7 +419,7 @@ mod tests {
         let id_non_zero = Identifier::from_bytes(&[1u8; IDENTIFIER_SIZE_BYTES]).unwrap();
         assert!(!id_non_zero.is_zero());
     }
-    
+
     #[test]
     fn test_identifier_is_max() {
         let id_max = Identifier::from_bytes(&[255u8; IDENTIFIER_SIZE_BYTES]).unwrap();
