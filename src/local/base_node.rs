@@ -191,41 +191,46 @@ mod tests {
         }
     }
 
-    // /// Test that returns the correct candidate when searching in the right direction,
-    // /// where the greatest identifier less than or equal to the target should be returned.
-    // #[test]
-    // fn test_search_by_id_found_right_direction() {
-    //     let lt = random_lookup_table_with_extremes(LOOKUP_TABLE_LEVELS);
-    //     let node = LocalNode {
-    //         id: random_identifier(),
-    //         mem_vec: random_membership_vector(),
-    //         lt: Box::new(lt.clone()),
-    //     };
-    //
-    //     // Iterate through each level and perform a search
-    //     for lvl in 0..LOOKUP_TABLE_LEVELS {
-    //         let target = random_identifier();
-    //         let direction = Direction::Right;
-    //         let req = IdentifierSearchRequest::new(target, lvl, direction);
-    //
-    //         let actual_result = node.search_by_id(&req).unwrap();
-    //
-    //         let mut candidates = vec![];
-    //         for l in 0..req.level() {
-    //             if let Ok(Some(identity)) = lt.get_entry(l, direction) {
-    //                 candidates.push((*identity.id(), l));
-    //             }
-    //         }
-    //         let expected = candidates
-    //             .into_iter()
-    //             .filter(|(id, _)| id <= req.target())
-    //             .max_by_key(|(id, _)| *id);
-    //         let expected_id = expected.map(|(id, _)| id).unwrap_or(*node.get_identifier());
-    //
-    //         assert_eq!(expected_id, *actual_result.result());
-    //     }
-    // }
-    //
+    /// Test that returns the correct candidate when searching in the right direction,
+    /// where the greatest identifier less than or equal to the target should be returned.
+    #[test]
+    fn test_search_by_id_found_right_direction() {
+        let lt = random_lookup_table_with_extremes(LOOKUP_TABLE_LEVELS);
+        let node = LocalNode {
+            id: random_identifier(),
+            mem_vec: random_membership_vector(),
+            lt: Box::new(lt.clone()),
+        };
+    
+        // Iterate through each level and perform a search
+        for lvl in 0..LOOKUP_TABLE_LEVELS {
+            let target = random_identifier();
+            let direction = Direction::Right;
+            let req = IdentifierSearchRequest::new(target, lvl, direction);
+    
+            let actual_result = node.search_by_id(&req).unwrap();
+    
+            
+            let expected = lt
+                .right_neighbors()
+                .unwrap()
+                .into_iter()
+                .filter(|(lvl, id)| *lvl <= req.level() && id.id() <= req.target())
+                .max_by_key(|(_, id)| *id.id());
+            
+            match expected { 
+                Some((expected_lvl, expected_identity)) => {
+                    assert_eq!(expected_lvl, actual_result.level());
+                    assert_eq!(*expected_identity.id(), *actual_result.result());
+                }
+                None => {
+                    assert_eq!(0, actual_result.level());
+                    assert_eq!(*node.get_identifier(), *actual_result.result());
+                }
+            }
+        }
+    }
+    
     // /// Test that returns the node's own address when no candidates are found matching the target.
     // #[test]
     // fn test_search_by_id_no_candidates() {
