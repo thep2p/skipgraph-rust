@@ -193,22 +193,22 @@ mod tests {
     #[test]
     fn test_identifier_from_bytes() {
         // 32 bytes of zero
-        let bytes = [0u8; model::IDENTIFIER_SIZE_BYTES];
+        let bytes = [0u8; IDENTIFIER_SIZE_BYTES];
         let identifier = Identifier::from_bytes(&bytes).unwrap();
         assert_eq!(identifier.to_bytes(), bytes.to_vec());
 
         // 32 bytes of one
-        let bytes = [255u8; model::IDENTIFIER_SIZE_BYTES];
+        let bytes = [255u8; IDENTIFIER_SIZE_BYTES];
         let identifier = Identifier::from_bytes(&bytes).unwrap();
         assert_eq!(identifier.to_bytes(), bytes.to_vec());
 
         // 32 bytes random input
-        let bytes = random::bytes(model::IDENTIFIER_SIZE_BYTES);
+        let bytes = random::bytes(IDENTIFIER_SIZE_BYTES);
         let identifier = Identifier::from_bytes(&bytes).unwrap();
         assert_eq!(identifier.to_bytes(), bytes);
 
         // 31 bytes random input; should be padded with 0
-        let bytes = random::bytes(model::IDENTIFIER_SIZE_BYTES - 1);
+        let bytes = random::bytes(IDENTIFIER_SIZE_BYTES - 1);
         let identifier = Identifier::from_bytes(&bytes).unwrap();
         assert_eq!(identifier.to_bytes()[1..], bytes);
         assert_eq!(identifier.to_bytes()[0], 0);

@@ -132,11 +132,9 @@ impl Clone for LocalNode {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::core::testutil::fixtures::{
-        random_identifier, random_lookup_table_with_extremes, random_membership_vector,
-        span_fixture,
-    };
+    use crate::core::testutil::fixtures::{random_address, random_identifier, random_identifier_greater_than, random_lookup_table_with_extremes, random_membership_vector, span_fixture};
     use crate::core::{ArrayLookupTable, LOOKUP_TABLE_LEVELS};
+    use crate::core::model::identity::Identity;
 
     #[test]
     fn test_local_node() {
@@ -166,6 +164,16 @@ mod tests {
 
         for lvl in 0..LOOKUP_TABLE_LEVELS {
             let target = random_identifier();
+            
+            // Generate a random identifier greater than the target to ensure we have a candidate
+            // Puts the candidate in the left direction at zero level
+            let safe_neighbor = random_identifier_greater_than(&target);
+            lt.update_entry(
+                Identity::new(&safe_neighbor, &random_membership_vector(), random_address()),
+                0,
+                Direction::Left,
+            ).expect("Failed to update entry in lookup table");
+            
             let direction = Direction::Left;
             let req = IdentifierSearchRequest::new(target, lvl, direction);
 
@@ -248,7 +256,7 @@ mod tests {
     //     let res = node.search_by_id(&req).unwrap();
     //     assert_eq!(*node.get_identifier(), *res.result());
     // }
-    //
+    // 
     // /// Test that returns an error when the lookup table returns an error during search at any level.
     // #[test]
     // fn test_search_by_id_error_propagation() {
