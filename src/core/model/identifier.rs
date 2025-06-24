@@ -135,6 +135,18 @@ impl Identifier {
     pub fn to_bytes(&self) -> Vec<u8> {
         self.0.to_vec()
     }
+    
+    /// Returns true if the identifier is zero, i.e., all bytes are zero.
+    /// Otherwise, returns false.
+    pub fn is_zero(&self) -> bool {
+        self.0.iter().all(|&byte| byte == 0)
+    }
+    
+    /// Returns true if the identifier is the maximum value, i.e., all bytes are 255.
+    /// Otherwise, returns false.
+    pub fn is_max(&self) -> bool {
+        self.0.iter().all(|&byte| byte == 255)
+    }
 }
 
 impl Display for Identifier {
@@ -393,5 +405,23 @@ mod tests {
         let id = random_membership_vector();
         let id_str = id.to_string();
         println!("{}", id_str);
+    }
+    
+    #[test]
+    fn test_identifier_is_zero() {
+        let id_zero = Identifier::from_bytes(&[0u8; IDENTIFIER_SIZE_BYTES]).unwrap();
+        assert!(id_zero.is_zero());
+
+        let id_non_zero = Identifier::from_bytes(&[1u8; IDENTIFIER_SIZE_BYTES]).unwrap();
+        assert!(!id_non_zero.is_zero());
+    }
+    
+    #[test]
+    fn test_identifier_is_max() {
+        let id_max = Identifier::from_bytes(&[255u8; IDENTIFIER_SIZE_BYTES]).unwrap();
+        assert!(id_max.is_max());
+
+        let id_non_max = Identifier::from_bytes(&[254u8; IDENTIFIER_SIZE_BYTES]).unwrap();
+        assert!(!id_non_max.is_max());
     }
 }

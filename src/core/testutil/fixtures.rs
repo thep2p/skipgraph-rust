@@ -17,6 +17,23 @@ pub fn random_identifier() -> Identifier {
     Identifier::from_string(&random_hex_str(model::IDENTIFIER_SIZE_BYTES)).unwrap()
 }
 
+pub fn random_identifier_greater_than(
+    target: &Identifier,
+) -> Identifier {
+    if target.is_zero() {
+        // If the target is zero, we can safely return a random identifier
+        return random_identifier();
+    } else {
+        // Generate a random identifier and ensure it is greater than the target
+        loop {
+            let id = random_identifier();
+            if id > *target {
+                return id;
+            }
+        }
+    }
+}
+
 /// Generate n random identifiers sorted in ascending order.
 pub fn random_sorted_identifiers(n: usize) -> Vec<Identifier> {
     let mut ids = (0..n)
