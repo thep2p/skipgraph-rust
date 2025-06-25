@@ -8,17 +8,16 @@ mod test_imports {
     pub use rand::Rng;
 }
 
-use crate::core::model::identifier::{ZERO, MAX};
+use crate::core::model::identifier::{MAX, ZERO};
 use std::thread::JoinHandle;
 use std::time::Duration;
 use test_imports::*;
 
-
 /// Generates a random identifier.
 ///
 /// This function creates a random identifier by generating a random hex string
-/// of `IDENTIFIER_SIZE_BYTES` length and converting it into an `Identifier` 
-/// type. The function unwraps the result of the `from_string` method, so it 
+/// of `IDENTIFIER_SIZE_BYTES` length and converting it into an `Identifier`
+/// type. The function unwraps the result of the `from_string` method, so it
 /// assumes that the conversion will not fail.
 ///
 /// # Returns
@@ -37,7 +36,7 @@ pub fn random_identifier() -> Identifier {
 /// Generates a random `Identifier` that is greater than the given target `Identifier`.
 ///
 /// # Parameters
-/// - `target`: A reference to an `Identifier` that acts as the lower bound (exclusive) 
+/// - `target`: A reference to an `Identifier` that acts as the lower bound (exclusive)
 ///   for the random identifier to be generated.
 ///
 /// # Returns
@@ -45,10 +44,10 @@ pub fn random_identifier() -> Identifier {
 ///
 /// # Behavior
 /// - If the `target` is equal to `ZERO`, the function generates a completely new random identifier.
-/// - If the `target` is equal to `MAX` (the maximum possible identifier value), the function will 
+/// - If the `target` is equal to `MAX` (the maximum possible identifier value), the function will
 ///   panic because it is not possible to create an identifier greater than `MAX`.
 /// - For any other `target` value:
-///   - The function modifies the bytes of the `target` such that the resulting bytes 
+///   - The function modifies the bytes of the `target` such that the resulting bytes
 ///     represent a valid identifier greater than `target`.
 ///   - If needed, it attempts to resolve these modified bytes back into a valid `Identifier`.
 ///   - If resolving fails (unexpected), the function panics with an error message.
@@ -79,22 +78,21 @@ pub fn random_identifier_greater_than(target: &Identifier) -> Identifier {
                     break;
                 }
             }
-            return Identifier::from_bytes(&bytes).unwrap_or_else(|_| {
+            Identifier::from_bytes(&bytes).unwrap_or_else(|_| {
                 panic!(
                     "Failed to create a valid identifier from bytes: {:?}",
                     bytes
                 )
-            });
+            })
         }
     }
 }
-
 
 /// Generates a random `Identifier` that is less than a given `target` `Identifier`.
 ///
 /// # Arguments
 ///
-/// * `target` - A reference to an `Identifier` that serves as the upper bound. 
+/// * `target` - A reference to an `Identifier` that serves as the upper bound.
 ///   The function will attempt to generate an `Identifier` less than this value.
 ///
 /// # Returns
@@ -120,7 +118,7 @@ pub fn random_identifier_greater_than(target: &Identifier) -> Identifier {
 /// * For any other valid `Identifier`, the function will attempt to decrement the bytes of the
 ///   `target` identifier (starting from the least-significant byte). It ensures
 ///   the resulting byte sequence is valid and uses it to construct the new `Identifier`.
-/// 
+///
 /// # Notes
 ///
 /// This function assumes that the `Identifier` type supports the following:
@@ -148,16 +146,16 @@ pub fn random_identifier_less_than(target: &Identifier) -> Identifier {
                     break;
                 }
             }
-            return Identifier::from_bytes(&bytes).unwrap_or_else(|_| {
+            
+            Identifier::from_bytes(&bytes).unwrap_or_else(|_| {
                 panic!(
                     "Failed to create a valid identifier from bytes: {:?}",
                     bytes
                 )
-            });
+            })
         }
     }
 }
-
 
 /// Generates a vector of `n` randomly created and sorted `Identifier` values.
 ///
@@ -182,12 +180,11 @@ pub fn random_sorted_identifiers(n: usize) -> Vec<Identifier> {
     ids
 }
 
-
 /// Generates a random `MembershipVector`.
 ///
 /// This function creates a `MembershipVector` using a randomly generated hexadecimal string
-/// of a size determined by `model::IDENTIFIER_SIZE_BYTES`. The `random_hex_str` function is 
-/// used to generate the random hexadecimal string, which is then converted into a 
+/// of a size determined by `model::IDENTIFIER_SIZE_BYTES`. The `random_hex_str` function is
+/// used to generate the random hexadecimal string, which is then converted into a
 /// `MembershipVector` using the `from_string` method. If the conversion fails, it will unwrap
 /// and cause a panic.
 ///
@@ -195,7 +192,7 @@ pub fn random_sorted_identifiers(n: usize) -> Vec<Identifier> {
 /// A randomly generated `MembershipVector`.
 ///
 /// # Panics
-/// This function will panic if the generated hexadecimal string cannot be converted into a 
+/// This function will panic if the generated hexadecimal string cannot be converted into a
 /// valid `MembershipVector`.
 pub fn random_membership_vector() -> MembershipVector {
     MembershipVector::from_string(&random_hex_str(model::IDENTIFIER_SIZE_BYTES)).unwrap()
@@ -253,7 +250,7 @@ pub fn random_identity() -> Identity {
 
 /// Generates a vector of random `Identity` objects.
 ///
-/// This function creates `n` random identities by repeatedly calling the 
+/// This function creates `n` random identities by repeatedly calling the
 /// `random_identity` function and collects them into a `Vec<Identity>`.
 ///
 /// # Arguments
@@ -267,7 +264,6 @@ pub fn random_identities(n: usize) -> Vec<Identity> {
     (0..n).map(|_| random_identity()).collect()
 }
 
-
 /// Creates a random `ArrayLookupTable` with populated entries.
 ///
 /// This function initializes a new `ArrayLookupTable` and populates its entries
@@ -277,8 +273,8 @@ pub fn random_identities(n: usize) -> Vec<Identity> {
 /// - One entry for the identifier at index `i + n`, using `Direction::Right`.
 ///
 /// # Parameters
-/// - `n`: The number of unique indices to be added to the lookup table. This will result
-///        in a total of `2 * n` entries being inserted.
+/// - `n`: The number of unique indices to be added to the lookup table. This will result 
+///   in a total of `2 * n` entries being inserted.
 ///
 /// # Returns
 /// - An `ArrayLookupTable` populated with randomly generated identifiers and their
@@ -474,13 +470,13 @@ mod test {
             curr
         });
     }
-    
+
     /// Tests the `random_identifier_greater_than` function to ensure that it always generates
     /// an identifier greater than the given target identifier.
     ///
     /// The test generates 100 random target identifiers using the `random_identifier` function.
-    /// For each target, it calls the `random_identifier_greater_than` function to generate 
-    /// an identifier that is supposed to be greater than the target. 
+    /// For each target, it calls the `random_identifier_greater_than` function to generate
+    /// an identifier that is supposed to be greater than the target.
     ///
     /// It then asserts that the generated identifier is indeed greater than the target
     /// using the `>` operator.
@@ -501,9 +497,12 @@ mod test {
             // Ensure that the generated identifier is indeed greater than the target
             assert!(greater > target);
         }
-        assert!(failure_count < 1000, "Failed to generate greater identifiers for all targets.");
+        assert!(
+            failure_count < 1000,
+            "Failed to generate greater identifiers for all targets."
+        );
     }
-    
+
     /// Tests the `random_identifier_less_than` function from the parent module.
     ///
     /// The `random_identifier_less_than` function should generate a random identifier
@@ -541,6 +540,9 @@ mod test {
             // Ensure that the generated identifier is indeed less than the target
             assert!(less < target);
         }
-        assert!(failure_count < 1000, "Failed to generate lesser identifiers for all targets.");
+        assert!(
+            failure_count < 1000,
+            "Failed to generate lesser identifiers for all targets."
+        );
     }
 }

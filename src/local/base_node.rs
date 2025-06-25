@@ -133,7 +133,11 @@ impl Clone for LocalNode {
 mod tests {
     use super::*;
     use crate::core::model::identity::Identity;
-    use crate::core::testutil::fixtures::{random_address, random_identifier, random_identifier_greater_than, random_identifier_less_than, random_lookup_table_with_extremes, random_membership_vector, span_fixture};
+    use crate::core::testutil::fixtures::{
+        random_address, random_identifier, random_identifier_greater_than,
+        random_identifier_less_than, random_lookup_table_with_extremes, random_membership_vector,
+        span_fixture,
+    };
     use crate::core::{ArrayLookupTable, LOOKUP_TABLE_LEVELS};
 
     #[test]
@@ -217,7 +221,8 @@ mod tests {
                 ),
                 0,
                 Direction::Right,
-            ).expect("Failed to update entry in lookup table");
+            )
+            .expect("Failed to update entry in lookup table");
 
             let direction = Direction::Right;
             let req = IdentifierSearchRequest::new(target, lvl, direction);
@@ -235,7 +240,8 @@ mod tests {
                 .unwrap()
                 .into_iter()
                 .filter(|(lvl, id)| *lvl <= req.level() && id.id() <= req.target())
-                .max_by_key(|(_, id)| *id.id()).unwrap();
+                .max_by_key(|(_, id)| *id.id())
+                .unwrap();
 
             assert_eq!(expected_lvl, actual_result.level());
             assert_eq!(*expected_identity.id(), *actual_result.result());
