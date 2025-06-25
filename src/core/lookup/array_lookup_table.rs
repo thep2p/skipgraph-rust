@@ -618,9 +618,9 @@ mod tests {
 
         let lefts = lt.left_neighbors().unwrap();
         assert_eq!(lefts.len(), LOOKUP_TABLE_LEVELS);
-        for (level, identity) in rights.iter() {
+        for (level, identity) in lefts.iter() {
             assert_eq!(
-                lt.get_entry(*level, Direction::Right).unwrap(),
+                lt.get_entry(*level, Direction::Left).unwrap(),
                 Some(identity.clone())
             );
         }
