@@ -133,11 +133,7 @@ impl Clone for LocalNode {
 mod tests {
     use super::*;
     use crate::core::model::identity::Identity;
-    use crate::core::testutil::fixtures::{
-        random_address, random_identifier, random_identifier_greater_than,
-        random_identifier_less_than, random_lookup_table_with_extremes, random_membership_vector,
-        span_fixture,
-    };
+    use crate::core::testutil::fixtures::{join_all_with_timeout, join_with_timeout, random_address, random_identifier, random_identifier_greater_than, random_identifier_less_than, random_lookup_table_with_extremes, random_membership_vector, span_fixture};
     use crate::core::{ArrayLookupTable, LOOKUP_TABLE_LEVELS};
 
     #[test]
@@ -407,8 +403,57 @@ mod tests {
             }
         }
     }
+    
+    #[test]
+    fn test_search_by_id_concurrent_found_left_direction() {
+        let lt = random_lookup_table_with_extremes(LOOKUP_TABLE_LEVELS);
+        let target = random_identifier();
+
+        let node = LocalNode {
+            id: random_identifier(),
+            mem_vec: random_membership_vector(),
+            lt: Box::new(lt.clone()),
+        };
+        
+        // Spawn 20 threads to perform concurrent searches
+        let num_threads = 20;
+        let barrier = std::sync::Arc::new(std::sync::Barrier::new(num_threads + 1));
+        let mut handles = Vec::new();
+        for _ in 0..num_threads {
+            let handle_barrier = barrier.clone();
+            let handle = std::thread::spawn(move || {
+                // Wait for all threads to be ready
+                handle_barrier.wait();
+
+                // Perform the search in the left direction
+                let req = IdentifierSearchRequest::new(target, 0, Direction::Left);
+                let actual_result = node.search_by_id(&req).unwrap();
+
+                let expected_result = lt
+                    .left_neighbors()
+                    .unwrap()
+                    .into_iter()
+                    .filter(|(l, id)| *l <= req.level() && id.id() >= req.target())
+                    .min_by_key(|(_, id)| *id.id());
+
+                match expected_result {
+                    Some((expected_lvl, expected_identity)) => {
+                        assert_eq!(expected_lvl, actual_result.level());
+                        assert_eq!(*expected_identity.id(), *actual_result.result());
+                    }
+                    None => {
+                        // If no expected result, it should return its own identifier
+                        assert_eq!(actual_result.level(), 0);
+                        assert_eq!(*actual_result.result(), *node.get_identifier());
+                    }
+                }
+            });
+        }
+        
+        let timeout = std::time::Duration::from_millis(1000);
+        join_all_with_timeout(handles.into_boxed_slice(), timeout).unwrap();
+    }
 
     // TODO: test that returns an error when the lookup table returns an error during search at any level.
-    // TODO: test that when the exact target is found, it returns the correct level and identifier.
     // TODO: concurrent tests for search_by_id to ensure thread safety and correctness under concurrent access.
 }
