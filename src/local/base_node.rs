@@ -247,6 +247,69 @@ mod tests {
             assert_eq!(*expected_identity.id(), *actual_result.result());
         }
     }
+    
+    /// Unit test for the `search_by_id` function with the scenario where the target identifier is not found 
+    /// in the left direction within the lookup table.
+    ///
+    /// This test ensures that when no suitable candidates are found in the left direction, the function returns 
+    /// the node's own address (identifier). The test runs for all levels in the lookup table and validates the
+    /// behavior.
+    ///
+    /// Test Steps:
+    /// 1. Generate a random target identifier.
+    /// 2. Iteratively test across all levels of the lookup table.
+    /// 3. For each level:
+    ///    - Populate the left neighbors of the lookup table with entries that all have identifiers 
+    ///      less than the target. This guarantees no potential matches in the left direction for the target.
+    ///    - Construct a `LocalNode` with the configured lookup table.
+    ///    - Create a search request aimed at the left direction.
+    ///    - Invoke the `search_by_id` method using the request.
+    ///    - Assert that the result matches the node's own identifier, as no better match is expected.
+    ///
+    /// Test Assertions:
+    /// - The resulting level of the search result should be `0`, indicating the search exhausted all levels.
+    /// - The resulting identifier should match the local node's identifier.
+    #[test]
+    fn test_search_by_id_not_found_left_direction() {
+        let target = random_identifier();
+        
+        // Test that returns the node's own address when no candidates are found matching the target in the left direction.
+        for lvl in 0..LOOKUP_TABLE_LEVELS {
+            let lt = ArrayLookupTable::new(&span_fixture());
+            
+            // Populate the left neighbors of the lookup table with entries that are all less than the target
+            // This ensures that no candidates are found in the left direction
+            for lvl in 0..LOOKUP_TABLE_LEVELS {
+                lt.update_entry(
+                    Identity::new(
+                        &random_identifier_less_than(&target), 
+                        &random_membership_vector(),
+                        random_address(),
+                    ),
+                    lvl,
+                    Direction::Left,
+                )
+                .expect("Failed to update entry in lookup table");
+            }
+            
+           
+
+            let node = LocalNode {
+                id: random_identifier(),
+                mem_vec: random_membership_vector(),
+                lt: Box::new(lt.clone()),
+            };
+
+            let direction = Direction::Left;
+            let req = IdentifierSearchRequest::new(target, lvl, direction);
+
+            let actual_result = node.search_by_id(&req).unwrap();
+
+            assert_eq!(actual_result.level(), 0);
+            assert_eq!(*actual_result.result(), *node.get_identifier());
+        }
+    }
+    
 
     // TODO: test that returns the node's own address when no candidates are found matching the target (left/right direction).
     // TODO: test that returns an error when the lookup table returns an error during search at any level.
