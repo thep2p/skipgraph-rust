@@ -131,11 +131,15 @@ impl Clone for LocalNode {
 
 #[cfg(test)]
 mod tests {
-    use std::sync::Arc;
     use super::*;
     use crate::core::model::identity::Identity;
-    use crate::core::testutil::fixtures::{join_all_with_timeout, join_with_timeout, random_address, random_identifier, random_identifier_greater_than, random_identifier_less_than, random_lookup_table_with_extremes, random_membership_vector, span_fixture};
+    use crate::core::testutil::fixtures::{
+        join_all_with_timeout, random_address, random_identifier, random_identifier_greater_than,
+        random_identifier_less_than, random_lookup_table_with_extremes, random_membership_vector,
+        span_fixture,
+    };
     use crate::core::{ArrayLookupTable, LOOKUP_TABLE_LEVELS};
+    use std::sync::Arc;
 
     #[test]
     fn test_local_node() {
@@ -289,8 +293,6 @@ mod tests {
                 .expect("Failed to update entry in lookup table");
             }
 
-
-
             let node = LocalNode {
                 id: random_identifier(),
                 mem_vec: random_membership_vector(),
@@ -418,7 +420,7 @@ mod tests {
 
         // Spawn 20 threads to perform concurrent searches
         let num_threads = 20;
-        let barrier = std::sync::Arc::new(std::sync::Barrier::new(num_threads + 1));
+        let barrier = Arc::new(std::sync::Barrier::new(num_threads + 1)); // +1 for the main thread
         let mut handles: Vec<std::thread::JoinHandle<()>> = Vec::new();
         for _ in 0..num_threads {
             let handle_barrier = barrier.clone();
@@ -454,6 +456,9 @@ mod tests {
             handles.push(handle);
         }
 
+        // Ensures all threads are ready to run before the main thread tries to join them
+        // avoiding a situation where the main thread tries to join thread that haven't started yet.
+        barrier.wait();
         let timeout = std::time::Duration::from_millis(1000);
         join_all_with_timeout(handles.into_boxed_slice(), timeout).unwrap();
     }
