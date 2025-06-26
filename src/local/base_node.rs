@@ -407,7 +407,7 @@ mod tests {
 
     #[test]
     fn test_search_by_id_concurrent_found_left_direction() {
-        let lt = Arc::new(random_lookup_table_with_extremes(LOOKUP_TABLE_LEVELS));
+        let lt = random_lookup_table_with_extremes(LOOKUP_TABLE_LEVELS);
         let target = random_identifier();
 
         let node = Arc::new(LocalNode {
@@ -419,20 +419,20 @@ mod tests {
         // Spawn 20 threads to perform concurrent searches
         let num_threads = 20;
         let barrier = std::sync::Arc::new(std::sync::Barrier::new(num_threads + 1));
-        let mut handles = Vec::new();
+        let mut handles: Vec<std::thread::JoinHandle<()>> = Vec::new();
         for _ in 0..num_threads {
             let handle_barrier = barrier.clone();
             let node_ref = node.clone();
-            let lt = Arc::clone(&lt);
+            let lt_clone = lt.clone();
             let handle = std::thread::spawn(move || {
                 // Wait for all threads to be ready
                 handle_barrier.wait();
 
                 // Perform the search in the left direction
                 let req = IdentifierSearchRequest::new(target, 0, Direction::Left);
-                let actual_result = node.search_by_id(&req).unwrap();
+                let actual_result = node_ref.search_by_id(&req).unwrap();
 
-                let expected_result = lt
+                let expected_result = lt_clone
                     .left_neighbors()
                     .unwrap()
                     .into_iter()
@@ -447,7 +447,7 @@ mod tests {
                     None => {
                         // If no expected result, it should return its own identifier
                         assert_eq!(actual_result.level(), 0);
-                        assert_eq!(*actual_result.result(), *node.get_identifier());
+                        assert_eq!(*actual_result.result(), *node_ref.get_identifier());
                     }
                 }
             });
