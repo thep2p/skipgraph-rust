@@ -131,6 +131,7 @@ impl Clone for LocalNode {
 
 #[cfg(test)]
 mod tests {
+    use std::sync::Arc;
     use super::*;
     use crate::core::model::identity::Identity;
     use crate::core::testutil::fixtures::{join_all_with_timeout, join_with_timeout, random_address, random_identifier, random_identifier_greater_than, random_identifier_less_than, random_lookup_table_with_extremes, random_membership_vector, span_fixture};
@@ -365,7 +366,7 @@ mod tests {
             assert_eq!(*actual_result.result(), *node.get_identifier());
         }
     }
-    
+
     /// Tests the `search_by_id` function of the `LocalNode` struct to verify that it properly returns the exact result
     /// when the target identifier exists in the lookup table at the specified level.
     ///
@@ -382,13 +383,13 @@ mod tests {
     #[test]
     fn test_search_by_id_exact_result() {
         let lt = random_lookup_table_with_extremes(LOOKUP_TABLE_LEVELS);
-        
+
         let node = LocalNode {
             id: random_identifier(),
             mem_vec: random_membership_vector(),
             lt: Box::new(lt.clone()),
         };
-        
+
         // This test should ensure that when the exact target is found, it returns the correct level and identifier.
         for lvl in 0..LOOKUP_TABLE_LEVELS {
             for direction in [Direction::Left, Direction::Right] {
@@ -403,24 +404,26 @@ mod tests {
             }
         }
     }
-    
+
     #[test]
     fn test_search_by_id_concurrent_found_left_direction() {
-        let lt = random_lookup_table_with_extremes(LOOKUP_TABLE_LEVELS);
+        let lt = Arc::new(random_lookup_table_with_extremes(LOOKUP_TABLE_LEVELS));
         let target = random_identifier();
 
-        let node = LocalNode {
+        let node = Arc::new(LocalNode {
             id: random_identifier(),
             mem_vec: random_membership_vector(),
             lt: Box::new(lt.clone()),
-        };
-        
+        });
+
         // Spawn 20 threads to perform concurrent searches
         let num_threads = 20;
         let barrier = std::sync::Arc::new(std::sync::Barrier::new(num_threads + 1));
         let mut handles = Vec::new();
         for _ in 0..num_threads {
             let handle_barrier = barrier.clone();
+            let node_ref = node.clone();
+            let lt = Arc::clone(&lt);
             let handle = std::thread::spawn(move || {
                 // Wait for all threads to be ready
                 handle_barrier.wait();
@@ -448,8 +451,9 @@ mod tests {
                     }
                 }
             });
+            handles.push(handle);
         }
-        
+
         let timeout = std::time::Duration::from_millis(1000);
         join_all_with_timeout(handles.into_boxed_slice(), timeout).unwrap();
     }
