@@ -593,11 +593,7 @@ mod tests {
                 todo!()
             }
 
-            fn get_entry(
-                &self,
-                _: usize,
-                _: Direction,
-            ) -> anyhow::Result<Option<Identity>> {
+            fn get_entry(&self, _: usize, _: Direction) -> anyhow::Result<Option<Identity>> {
                 Err(anyhow::anyhow!("Simulated lookup table error"))
             }
 
@@ -636,22 +632,18 @@ mod tests {
             result.is_err(),
             "Expected an error but got a success result"
         );
-        
+
         // Check that the error message contains the expected text ("Error while searching by id in level")
         // This error message is constructed in the search_by_id method
         let error_msg = result.unwrap_err().to_string();
         assert!(
-            error_msg.contains("Error while searching by id in level"), 
-            "Error message '{}' doesn't contain expected text",
-            error_msg
-        );
-        
+            error_msg.contains("Error while searching by id in level"),
+            "Error message '{error_msg}' doesn't contain expected text");
+
         // Additionally, check that the error message contains the simulated lookup table error ("Simulated lookup table error")
         // This ensures that the error from the lookup table is propagated correctly
         assert!(
             error_msg.contains("Simulated lookup table error"),
-            "Error message '{}' doesn't contain expected text",
-            error_msg
-        );
+            "Error message '{error_msg}' doesn't contain expected text");
     }
 }
