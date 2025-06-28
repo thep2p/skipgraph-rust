@@ -140,6 +140,7 @@ mod tests {
     };
     use crate::core::{ArrayLookupTable, LOOKUP_TABLE_LEVELS};
     use std::sync::Arc;
+        use rand::Rng;
 
     #[test]
     fn test_local_node() {
@@ -407,6 +408,25 @@ mod tests {
         }
     }
 
+    /// Tests the `search_by_id` method of a `LocalNode` under concurrent conditions where multiple
+    /// threads perform searches in the left direction (`Direction::Left`) simultaneously.
+    ///
+    /// The test:
+    /// - Creates a `LocalNode` with a random identifier, random membership vector,
+    ///   and a lookup table (`RandomLookupTable`).
+    /// - Randomly generates a target identifier to search for.
+    /// - Spawns 20 threads that conduct searches concurrently from the node.
+    ///
+    /// ### Test Specific Logic:
+    /// - Each thread constructs a search request targeting the same identifier and executes the `search_by_id` method.
+    /// - The expected search result is derived by finding the closest matching identifier from the
+    ///   left neighbors in the lookup table (`lt`) that meets the search criteria (e.g., level,
+    ///   target identifier comparison).
+    /// - If no valid neighbor is found, it expects the result to default to the `LocalNode`'s own identifier.
+    ///
+    /// ### Assertions:
+    /// - If a valid neighbor exists, the search output should match both the level and identifier.
+    /// - If no valid neighbor exists, the search result should match the node's own identifier at level 0.
     #[test]
     fn test_search_by_id_concurrent_found_left_direction() {
         let lt = random_lookup_table_with_extremes(LOOKUP_TABLE_LEVELS);
@@ -430,8 +450,11 @@ mod tests {
                 // Wait for all threads to be ready
                 handle_barrier.wait();
 
+                // Pick a random level for the search
+                let lvl = rand::rng().random_range(0..LOOKUP_TABLE_LEVELS);
+                
                 // Perform the search in the left direction
-                let req = IdentifierSearchRequest::new(target, 0, Direction::Left);
+                let req = IdentifierSearchRequest::new(target, lvl, Direction::Left);
                 let actual_result = node_ref.search_by_id(&req).unwrap();
 
                 let expected_result = lt_clone
@@ -456,6 +479,83 @@ mod tests {
             handles.push(handle);
         }
 
+        // Ensures all threads are ready to run before the main thread tries to join them
+        // avoiding a situation where the main thread tries to join thread that haven't started yet.
+        barrier.wait();
+        let timeout = std::time::Duration::from_millis(1000);
+        join_all_with_timeout(handles.into_boxed_slice(), timeout).unwrap();
+    }
+
+    /// Tests the `search_by_id` method of a `LocalNode` under concurrent conditions where multiple
+    /// threads perform searches in the right direction (`Direction::Right`) simultaneously.
+    ///
+    /// The test:
+    /// - Creates a `LocalNode` with a random identifier, random membership vector,
+    ///   and a lookup table (`RandomLookupTable`).
+    /// - Randomly generates a target identifier to search for.
+    /// - Spawns 20 threads that conduct searches concurrently from the node.
+    ///
+    /// ### Test Specific Logic:
+    /// - Each thread constructs a search request targeting the same identifier and executes the `search_by_id` method.
+    /// - The expected search result is derived by finding the closest matching identifier from the
+    ///   right neighbors in the lookup table (`lt`) that meets the search criteria (e.g., level,
+    ///   target identifier comparison).
+    /// - If no valid neighbor is found, it expects the result to default to the `LocalNode`'s own identifier.
+    ///
+    /// ### Assertions:
+    /// - If a valid neighbor exists, the search output should match both the level and identifier.
+    /// - If no valid neighbor exists, the search result should match the node's own identifier at level 0.
+    #[test]
+    fn test_search_by_id_concurrent_right_direction() {
+        let lt = random_lookup_table_with_extremes(LOOKUP_TABLE_LEVELS);
+        let target = random_identifier();
+
+        let node = Arc::new(LocalNode {
+            id: random_identifier(),
+            mem_vec: random_membership_vector(),
+            lt: Box::new(lt.clone()),
+        });
+
+        // Spawn 20 threads to perform concurrent searches
+        let num_threads = 20;
+        let barrier = Arc::new(std::sync::Barrier::new(num_threads + 1)); // +1 for the main thread
+        let mut handles: Vec<std::thread::JoinHandle<()>> = Vec::new();
+        for _ in 0..num_threads {
+            let handle_barrier = barrier.clone();
+            let node_ref = node.clone();
+            let lt_clone = lt.clone();
+            let handle = std::thread::spawn(move || {
+                // Wait for all threads to be ready
+                handle_barrier.wait();
+
+                // Pick a random level for the search
+                let lvl = rand::rng().random_range(0..LOOKUP_TABLE_LEVELS);
+                
+                // Perform the search in the right direction
+                let req = IdentifierSearchRequest::new(target, lvl, Direction::Right);
+                let actual_result = node_ref.search_by_id(&req).unwrap();
+
+                let expected_result = lt_clone
+                    .right_neighbors()
+                    .unwrap()
+                    .into_iter()
+                    .filter(|(l, id)| *l <= req.level() && id.id() <= req.target())
+                    .max_by_key(|(_, id)| *id.id());
+
+                match expected_result {
+                    Some((expected_lvl, expected_identity)) => {
+                        assert_eq!(expected_lvl, actual_result.level());
+                        assert_eq!(*expected_identity.id(), *actual_result.result());
+                    }
+                    None => {
+                        // If no expected result, it should return its own identifier
+                        assert_eq!(actual_result.level(), 0);
+                        assert_eq!(*actual_result.result(), *node_ref.get_identifier());
+                    }
+                }
+            });
+            handles.push(handle);
+        }
         // Ensures all threads are ready to run before the main thread tries to join them
         // avoiding a situation where the main thread tries to join thread that haven't started yet.
         barrier.wait();
