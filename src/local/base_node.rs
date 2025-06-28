@@ -138,9 +138,9 @@ mod tests {
         random_identifier_less_than, random_lookup_table_with_extremes, random_membership_vector,
         span_fixture,
     };
-    use crate::core::{ArrayLookupTable, LOOKUP_TABLE_LEVELS};
+    use crate::core::{ArrayLookupTable, LookupTableLevel, LOOKUP_TABLE_LEVELS};
+    use rand::Rng;
     use std::sync::Arc;
-        use rand::Rng;
 
     #[test]
     fn test_local_node() {
@@ -452,7 +452,7 @@ mod tests {
 
                 // Pick a random level for the search
                 let lvl = rand::rng().random_range(0..LOOKUP_TABLE_LEVELS);
-                
+
                 // Perform the search in the left direction
                 let req = IdentifierSearchRequest::new(target, lvl, Direction::Left);
                 let actual_result = node_ref.search_by_id(&req).unwrap();
@@ -530,7 +530,7 @@ mod tests {
 
                 // Pick a random level for the search
                 let lvl = rand::rng().random_range(0..LOOKUP_TABLE_LEVELS);
-                
+
                 // Perform the search in the right direction
                 let req = IdentifierSearchRequest::new(target, lvl, Direction::Right);
                 let actual_result = node_ref.search_by_id(&req).unwrap();
@@ -563,6 +563,95 @@ mod tests {
         join_all_with_timeout(handles.into_boxed_slice(), timeout).unwrap();
     }
 
-    // TODO: test that returns an error when the lookup table returns an error during search at any level.
-    // TODO: concurrent tests for search_by_id to ensure thread safety and correctness under concurrent access.
+    /// Test that verifies error handling when the lookup table returns an error during search.
+    ///
+    /// This test creates a mock lookup table that returns an error when queried at a specific level.
+    /// It then verifies that the `search_by_id` method properly propagates this error upward rather
+    /// than silently failing or returning an unexpected result.
+    #[test]
+    fn test_search_by_id_error_propagation() {
+        // Create a mock lookup table that returns an error for specific lookup operations
+        struct MockErrorLookupTable;
+
+        impl Clone for MockErrorLookupTable {
+            fn clone(&self) -> Self {
+                MockErrorLookupTable
+            }
+        }
+
+        impl LookupTable for MockErrorLookupTable {
+            fn update_entry(
+                &self,
+                _identity: Identity,
+                _level: usize,
+                _direction: Direction,
+            ) -> anyhow::Result<()> {
+                Ok(())
+            }
+
+            fn remove_entry(&self, _: LookupTableLevel, _: Direction) -> anyhow::Result<()> {
+                todo!()
+            }
+
+            fn get_entry(
+                &self,
+                _: usize,
+                _: Direction,
+            ) -> anyhow::Result<Option<Identity>> {
+                Err(anyhow::anyhow!("Simulated lookup table error"))
+            }
+
+            fn equal(&self, _: &dyn LookupTable) -> bool {
+                todo!()
+            }
+
+            fn left_neighbors(&self) -> anyhow::Result<Vec<(usize, Identity)>> {
+                Ok(Vec::new())
+            }
+
+            fn right_neighbors(&self) -> anyhow::Result<Vec<(usize, Identity)>> {
+                Ok(Vec::new())
+            }
+
+            fn clone_box(&self) -> Box<dyn LookupTable> {
+                todo!()
+            }
+        }
+
+        // Create a local node with the mock error lookup table
+        let node = LocalNode {
+            id: random_identifier(),
+            mem_vec: random_membership_vector(),
+            lt: Box::new(MockErrorLookupTable),
+        };
+
+        // Create a search request that will trigger the error in the mock lookup table
+        let req = IdentifierSearchRequest::new(random_identifier(), 3, Direction::Left);
+
+        // Execute the search and verify that an error is returned
+        let result = node.search_by_id(&req);
+
+        // The search should fail with an error message that includes our simulated error
+        assert!(
+            result.is_err(),
+            "Expected an error but got a success result"
+        );
+        
+        // Check that the error message contains the expected text ("Error while searching by id in level")
+        // This error message is constructed in the search_by_id method
+        let error_msg = result.unwrap_err().to_string();
+        assert!(
+            error_msg.contains("Error while searching by id in level"), 
+            "Error message '{}' doesn't contain expected text",
+            error_msg
+        );
+        
+        // Additionally, check that the error message contains the simulated lookup table error ("Simulated lookup table error")
+        // This ensures that the error from the lookup table is propagated correctly
+        assert!(
+            error_msg.contains("Simulated lookup table error"),
+            "Error message '{}' doesn't contain expected text",
+            error_msg
+        );
+    }
 }

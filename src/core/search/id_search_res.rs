@@ -1,6 +1,7 @@
 use crate::core::lookup::lookup_table::LookupTableLevel;
 use crate::core::Identifier;
 
+#[derive(Debug)]
 pub struct IdentifierSearchResult {
     target: Identifier,
     level: LookupTableLevel,
