@@ -7,6 +7,8 @@ use std::fmt::{Debug, Formatter};
 use std::sync::RwLock;
 use tracing::{Level, Span};
 
+/// The number of levels in the lookup table is determined by the size of the identifier in bits (that is
+/// `IDENTIFIER_SIZE_BYTES * 8`).
 pub const LOOKUP_TABLE_LEVELS: usize = model::IDENTIFIER_SIZE_BYTES * 8;
 
 /// It is a 2D array of Identity, where the first dimension is the level and the second dimension is the direction.
