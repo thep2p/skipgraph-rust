@@ -18,6 +18,10 @@ install-rustfmt:
 install-tools: install-lint install-rustfmt
 	@echo "✅ All tools installed"
 
+.PHONY install-tools:
+install-tools: install-lint install-rustfmt
+	@echo "✅ All tools installed"
+
 .PHONEY test:
 test:
 	@echo "Running tests"
