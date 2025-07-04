@@ -9,10 +9,14 @@ lint:
 	@echo "Running clippy"
 	@cargo clippy --all-targets --all-features -- -D warnings
 
-.PHONY install-rustfmt:
+.PHONEY install-rustfmt:
 install-rustfmt:
 	@echo "Installing rustfmt"
 	@rustup component add rustfmt
+
+.PHONEY install-tools:
+install-tools: install-lint install-rustfmt
+	@echo "✅ All tools installed"
 
 .PHONY install-tools:
 install-tools: install-lint install-rustfmt
