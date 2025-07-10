@@ -672,7 +672,8 @@ mod tests {
             lt: Box::new(MockErrorLookupTable),
         };
 
-        // Create a search request that will trigger the error in the mock lookup table
+        // Create a random search request (any search request will return an error as
+        // the mock lookup table is designed to fail)
         let req = IdentifierSearchRequest::new(random_identifier(), 3, Direction::Left);
 
         // Execute the search and verify that an error is returned
