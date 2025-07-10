@@ -5,7 +5,8 @@ use crate::core::Identifier;
 ///
 /// The `IdentifierSearchResult` struct is composed of three key components:
 /// - The `target` identifier that was searched for in the lookup table of the current node.
-/// - The `level` of the lookup table where the identifier search was terminated at the current
+/// - The `termination_level` of the lookup table where the identifier search was terminated at the
+/// current
 /// node.
 /// - The `result` identifier that was found during the search process at the current node.
 ///
@@ -16,7 +17,7 @@ use crate::core::Identifier;
 #[derive(Debug)]
 pub struct IdentifierSearchResult {
     target: Identifier,
-    level: LookupTableLevel,
+    termination_level: LookupTableLevel,
     result: Identifier,
 }
 
@@ -27,7 +28,8 @@ impl IdentifierSearchResult {
     ///
     /// - `target`: An `Identifier` representing the target element for the search operation in the
     /// lookup table of the current node.
-    /// - `level`: A `LookupTableLevel` that specifies the lookup level where the search was terminated
+    /// - `termination_level`: A `LookupTableLevel` that specifies the lookup level where the
+    /// search was terminated
     ///  at the current node.
     /// - `result`: An `Identifier` holding the result of the search operation at the current node.
     ///
@@ -38,7 +40,7 @@ impl IdentifierSearchResult {
     pub fn new(target: Identifier, level: LookupTableLevel, result: Identifier) -> Self {
         IdentifierSearchResult {
             target,
-            level,
+            termination_level: level,
             result,
         }
     }
@@ -49,8 +51,8 @@ impl IdentifierSearchResult {
     }
 
     /// Returns the level of the lookup table where the search was terminated at the current node.
-    pub fn level(&self) -> LookupTableLevel {
-        self.level
+    pub fn termination_level(&self) -> LookupTableLevel {
+        self.termination_level
     }
 
     /// Returns the result of the search operation at the current node.

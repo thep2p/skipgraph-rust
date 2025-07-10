@@ -243,7 +243,7 @@ mod tests {
                 .min_by_key(|(_, id)| *id.id())
                 .unwrap();
 
-            assert_eq!(expected_lvl, actual_result.level());
+            assert_eq!(expected_lvl, actual_result.termination_level());
             assert_eq!(*expected_identity.id(), *actual_result.result());
         }
     }
@@ -290,7 +290,7 @@ mod tests {
                 .max_by_key(|(_, id)| *id.id())
                 .unwrap();
 
-            assert_eq!(expected_lvl, actual_result.level());
+            assert_eq!(expected_lvl, actual_result.termination_level());
             assert_eq!(*expected_identity.id(), *actual_result.result());
         }
     }
@@ -350,7 +350,7 @@ mod tests {
 
             let actual_result = node.search_by_id(&req).unwrap();
 
-            assert_eq!(actual_result.level(), 0);
+            assert_eq!(actual_result.termination_level(), 0);
             assert_eq!(*actual_result.result(), *node.get_identifier());
         }
     }
@@ -410,7 +410,7 @@ mod tests {
 
             let actual_result = node.search_by_id(&req).unwrap();
 
-            assert_eq!(actual_result.level(), 0);
+            assert_eq!(actual_result.termination_level(), 0);
             assert_eq!(*actual_result.result(), *node.get_identifier());
         }
     }
@@ -447,7 +447,7 @@ mod tests {
 
                 let actual_result = node.search_by_id(&req).unwrap();
 
-                assert_eq!(actual_result.level(), lvl);
+                assert_eq!(actual_result.termination_level(), lvl);
                 assert_eq!(*actual_result.result(), *target);
             }
         }
@@ -511,12 +511,12 @@ mod tests {
 
                 match expected_result {
                     Some((expected_lvl, expected_identity)) => {
-                        assert_eq!(expected_lvl, actual_result.level());
+                        assert_eq!(expected_lvl, actual_result.termination_level());
                         assert_eq!(*expected_identity.id(), *actual_result.result());
                     }
                     None => {
                         // If no expected result, it should return its own identifier
-                        assert_eq!(actual_result.level(), 0);
+                        assert_eq!(actual_result.termination_level(), 0);
                         assert_eq!(*actual_result.result(), *node_ref.get_identifier());
                     }
                 }
@@ -589,12 +589,12 @@ mod tests {
 
                 match expected_result {
                     Some((expected_lvl, expected_identity)) => {
-                        assert_eq!(expected_lvl, actual_result.level());
+                        assert_eq!(expected_lvl, actual_result.termination_level());
                         assert_eq!(*expected_identity.id(), *actual_result.result());
                     }
                     None => {
                         // If no expected result, it should return its own identifier
-                        assert_eq!(actual_result.level(), 0);
+                        assert_eq!(actual_result.termination_level(), 0);
                         assert_eq!(*actual_result.result(), *node_ref.get_identifier());
                     }
                 }
