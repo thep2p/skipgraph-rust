@@ -483,6 +483,9 @@ mod tests {
             lt: Box::new(lt.clone()),
         });
 
+        // Ensure the target is not the same as the node's identifier
+        assert_ne!(&target, node.get_identifier());
+
         // Spawn 20 threads to perform concurrent searches
         let num_threads = 20;
         let barrier = Arc::new(std::sync::Barrier::new(num_threads + 1)); // +1 for the main thread
@@ -560,6 +563,9 @@ mod tests {
             mem_vec: random_membership_vector(),
             lt: Box::new(lt.clone()),
         });
+
+        // Ensure the target is not the same as the node's identifier
+        assert_ne!(&target, node.get_identifier());
 
         // Spawn 20 threads to perform concurrent searches
         let num_threads = 20;
