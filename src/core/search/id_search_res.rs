@@ -5,9 +5,7 @@ use crate::core::Identifier;
 ///
 /// The `IdentifierSearchResult` struct is composed of three key components:
 /// - The `target` identifier that was searched for in the lookup table of the current node.
-/// - The `termination_level` of the lookup table where the identifier search was terminated at the
-/// current
-/// node.
+/// - The `termination_level` of the lookup table where the identifier search was terminated at the current node.
 /// - The `result` identifier that was found during the search process at the current node.
 ///
 /// # Derives
@@ -26,11 +24,8 @@ impl IdentifierSearchResult {
     ///
     /// # Parameters
     ///
-    /// - `target`: An `Identifier` representing the target element for the search operation in the
-    /// lookup table of the current node.
-    /// - `termination_level`: A `LookupTableLevel` that specifies the lookup level where the
-    /// search was terminated
-    ///  at the current node.
+    /// - `target`: An `Identifier` representing the target element for the search operation in the lookup table of the current node.
+    /// - `termination_level`: A `LookupTableLevel` that specifies the lookup level where the search was terminated at the current node.
     /// - `result`: An `Identifier` holding the result of the search operation at the current node.
     ///
     /// # Returns
