@@ -3,9 +3,10 @@ use crate::core::model::direction::Direction;
 use crate::core::testutil::fixtures::span_fixture;
 use crate::core::{ArrayLookupTable, Identifier, IdentifierSearchRequest, MembershipVector, Node};
 
+// TODO: move other tests from base_node.rs here
 /// Tests fallback behavior of `search_by_id` when no neighbors exist.
 /// Each case mirrors a search on a singleton node as described in the behavior
-/// matrix of issue #??.
+/// matrix of issue https://github.com/thep2p/skipgraph-rust/issues/22.
 #[test]
 fn test_search_by_id_singleton_fallback() {
     // Node with identifier 10 and empty lookup table
