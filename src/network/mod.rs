@@ -4,6 +4,7 @@ use std::any::Any;
 use crate::core::Identifier;
 
 /// MessageType enum defines the types of messages that can be sent over the network.
+#[derive(Debug)]
 pub enum MessageType {
     TestMessage(String), // A message for testing purposes, it is a simple string message, and is not used in production.
 }

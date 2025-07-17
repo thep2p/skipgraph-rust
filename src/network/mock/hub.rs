@@ -6,7 +6,7 @@ use crate::network::mock::network::MockNetwork;
 use crate::network::{Message, Network};
 
 pub struct NetworkHub {
-    networks: RwLock<HashMap<Identifier, Box<Arc<dyn Network>>>>,
+    networks: RwLock<HashMap<Identifier, Arc<MockNetwork>>>,
 }
 
 impl NetworkHub {
@@ -22,12 +22,12 @@ impl NetworkHub {
             return Err(anyhow::anyhow!("Network with identifier {} already exists", identifier));
         }
         let mock_network = Arc::new(MockNetwork::new(self.clone()));
-        inner_networks.insert(identifier, Box::new(mock_network.clone() as Arc<dyn Network>));
+        inner_networks.insert(identifier, mock_network.clone());
         Ok(mock_network)
     }
 
-    pub fn get_network(&self, identifier: &Identifier) -> Option<Box<Arc<dyn Network>>> {
-        let inner_networks = self.networks.read().map_err(|e| anyhow!("Failed to acquire read lock on network hub")).ok()?;
+    pub fn get_network(&self, identifier: &Identifier) -> Option<Arc<MockNetwork>> {
+        let inner_networks = self.networks.read().map_err(|_| anyhow!("Failed to acquire read lock on network hub")).ok()?;
         inner_networks.get(identifier).cloned()
     }
 
