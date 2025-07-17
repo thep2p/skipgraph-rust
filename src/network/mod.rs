@@ -1,4 +1,7 @@
+pub mod mock;
+
 use std::any::Any;
+use crate::core::Identifier;
 
 /// MessageType enum defines the types of messages that can be sent over the network.
 pub enum MessageType {
@@ -8,6 +11,7 @@ pub enum MessageType {
 /// Message struct represents a message that can be sent over the network.
 pub struct Message {
     pub message_type: MessageType,
+    pub target_node_id: Identifier,
     pub payload: Box<dyn Any + Send>
 }
 
