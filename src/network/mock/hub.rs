@@ -16,12 +16,12 @@ impl NetworkHub {
         }
     }
 
-    pub fn new_mock_network(&self, identifier: Identifier) -> anyhow::Result<Arc<MockNetwork>> {
+    pub fn new_mock_network(self: &Arc<Self>, identifier: Identifier) -> anyhow::Result<Arc<MockNetwork>> {
         let mut inner_networks = self.networks.write().map_err(|e| anyhow!("Failed to acquire write lock on network hub"))?;
         if inner_networks.contains_key(&identifier) {
             return Err(anyhow::anyhow!("Network with identifier {} already exists", identifier));
         }
-        let mock_network = Arc::new(MockNetwork::new());
+        let mock_network = Arc::new(MockNetwork::new(self.clone()));
         inner_networks.insert(identifier, Box::new(mock_network.clone() as Arc<dyn Network>));
         Ok(mock_network)
     }
@@ -30,7 +30,7 @@ impl NetworkHub {
         let inner_networks = self.networks.read().map_err(|e| anyhow!("Failed to acquire read lock on network hub")).ok()?;
         inner_networks.get(identifier).cloned()
     }
-    
+
     pub fn route_message(&self, message: Message) -> anyhow::Result<()> {
         let inner_networks = self.networks.read().map_err(|e| anyhow!("Failed to acquire read lock on network hub"))?;
         if let Some(network) = inner_networks.get(&message.target_node_id) {
