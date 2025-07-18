@@ -1,11 +1,11 @@
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 use anyhow::Context;
 use crate::network::{Message, MessageProcessor, Network};
 use crate::network::mock::hub::NetworkHub;
 
 pub struct MockNetwork {
     hub : Arc<NetworkHub>,
-    processor: Option<Box<dyn MessageProcessor>>,
+    processor: Option<Box<Arc<Mutex<dyn MessageProcessor>>>>,
 }
 
 impl MockNetwork {
@@ -23,7 +23,7 @@ impl Network for MockNetwork {
         Ok(())
     }
 
-    fn register_processor(&mut self, processor: Box<dyn MessageProcessor>) -> anyhow::Result<()> {
+    fn register_processor(&mut self, processor: Box<Arc<Mutex<dyn MessageProcessor>>>) -> anyhow::Result<()> {
         if self.processor.is_some() {
             return Err(anyhow::anyhow!("A message processor is already registered"));
         }

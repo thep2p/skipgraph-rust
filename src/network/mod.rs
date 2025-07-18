@@ -1,6 +1,7 @@
 pub mod mock;
 
 use std::any::Any;
+use std::sync::{Arc, Mutex};
 use crate::core::Identifier;
 
 /// MessageType enum defines the types of messages that can be sent over the network.
@@ -29,7 +30,7 @@ pub trait Network: Send + Sync {
     /// Registers a message processor to handle incoming messages. 
     /// At any point in time, there can be only one processor registered.
     /// Registering a new processor is illegal if there is already a processor registered, and causes an error.
-    fn register_processor(&mut self, processor: Box<dyn MessageProcessor>) -> anyhow::Result<()>;
+    fn register_processor(&mut self, processor: Box<Arc<Mutex<dyn MessageProcessor>>>) -> anyhow::Result<()>;
 
     /// Starts the network service.
     fn start(&mut self) -> anyhow::Result<()>;
