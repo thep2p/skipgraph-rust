@@ -1,17 +1,18 @@
-use std::sync::{Arc, Mutex};
-use anyhow::Context;
-use crate::network::{Message, MessageProcessor, Network};
 use crate::network::mock::hub::NetworkHub;
+use crate::network::{Message, MessageProcessor, Network};
+use anyhow::Context;
+use std::cell::RefCell;
+use std::rc::Rc;
 
 pub struct MockNetwork {
-    hub : Arc<NetworkHub>,
-    processor: Option<Box<Arc<Mutex<dyn MessageProcessor>>>>,
+    hub: Rc<RefCell<NetworkHub>>,
+    processor: Option<Box<Rc<RefCell<dyn MessageProcessor>>>>,
 }
 
 impl MockNetwork {
-    pub fn new(hub : Arc<NetworkHub>) -> Self {
+    pub fn new(hub: Rc<RefCell<NetworkHub>>) -> Self {
         MockNetwork {
-            hub: hub.clone(),
+            hub,
             processor: None,
         }
     }
@@ -19,11 +20,17 @@ impl MockNetwork {
 
 impl Network for MockNetwork {
     fn send_message(&self, message: Message) -> anyhow::Result<()> {
-        self.hub.route_message(message).context("Failed to route message")?;
+        self.hub
+            .borrow()
+            .route_message(message)
+            .context("Failed to route message")?;
         Ok(())
     }
 
-    fn register_processor(&mut self, processor: Box<Arc<Mutex<dyn MessageProcessor>>>) -> anyhow::Result<()> {
+    fn register_processor(
+        &mut self,
+        processor: Box<Rc<RefCell<dyn MessageProcessor>>>,
+    ) -> anyhow::Result<()> {
         if self.processor.is_some() {
             return Err(anyhow::anyhow!("A message processor is already registered"));
         }

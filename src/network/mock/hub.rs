@@ -1,24 +1,26 @@
-use std::cell::RefCell;
 use crate::core::Identifier;
 use crate::network::mock::network::MockNetwork;
 use crate::network::{Message, Network};
 use anyhow::{anyhow, Context};
+use std::cell::RefCell;
 use std::collections::HashMap;
-use std::sync::{Arc, Mutex, RwLock};
+use std::rc::Rc;
+use std::sync::RwLock;
 
 pub struct NetworkHub {
-    networks: RwLock<HashMap<Identifier, Arc<Mutex<MockNetwork>>>>,
+    networks: RwLock<HashMap<Identifier, Rc<RefCell<MockNetwork>>>>,
 }
 
 impl NetworkHub {
-    pub fn new() -> Self {
-        NetworkHub {
+    pub fn new() -> Rc<RefCell<Self>> {
+        Rc::new(RefCell::new(NetworkHub {
             networks: RwLock::new(HashMap::new()),
-        }
+        }))
     }
 
-    pub fn new_mock_network(self: &Arc<Self>, identifier: Identifier, ) -> anyhow::Result<Rc<RefCell<MockNetwork>>> {
-        let mut inner_networks = self
+    pub fn new_mock_network(hub: Rc<RefCell<Self>>, identifier: Identifier) -> anyhow::Result<Rc<RefCell<MockNetwork>>> {
+        let inner_hub = hub.borrow();
+        let mut inner_networks = inner_hub
             .networks
             .write()
             .map_err(|e| anyhow!("Failed to acquire write lock on network hub"))?;
@@ -28,12 +30,12 @@ impl NetworkHub {
                 identifier
             ));
         }
-        let mock_network = Arc::new(Mutex::new(MockNetwork::new(self.clone())));
+        let mock_network = Rc::new(RefCell::new(MockNetwork::new(hub.clone())));
         inner_networks.insert(identifier, mock_network.clone());
         Ok(mock_network)
     }
 
-    pub fn get_network(&self, identifier: &Identifier) -> Option<Arc<Mutex<MockNetwork>>> {
+    pub fn get_network(&self, identifier: &Identifier) -> Option<Rc<RefCell<MockNetwork>>> {
         let inner_networks = self
             .networks
             .read()
@@ -47,11 +49,9 @@ impl NetworkHub {
             .networks
             .read()
             .map_err(|e| anyhow!("Failed to acquire read lock on network hub"))?;
-        if let Some(mutex_network) = inner_networks.get(&message.target_node_id) {
-            let network = mutex_network
-                .lock()
-                .map_err(|e| anyhow!("Failed to acquire lock on network {e}"))?;
+        if let Some(network) = inner_networks.get(&message.target_node_id) {
             network
+                .borrow()
                 .send_message(message)
                 .context("Failed to send message through network")?;
             Ok(())

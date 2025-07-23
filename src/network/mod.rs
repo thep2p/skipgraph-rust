@@ -1,8 +1,9 @@
 pub mod mock;
 
-use std::any::Any;
-use std::sync::{Arc, Mutex};
 use crate::core::Identifier;
+use std::any::Any;
+use std::cell::RefCell;
+use std::rc::Rc;
 
 /// MessageType enum defines the types of messages that can be sent over the network.
 #[derive(Debug)]
@@ -14,23 +15,26 @@ pub enum MessageType {
 pub struct Message {
     pub message_type: MessageType,
     pub target_node_id: Identifier,
-    pub payload: Box<dyn Any + Send>
+    pub payload: Box<dyn Any + Send>,
 }
 
 /// MessageProcessor trait defines the entity that processes the incoming network messages at this node.
-pub trait MessageProcessor: Send + Sync {
+pub trait MessageProcessor {
     fn process_incoming_message(&mut self, message: Message) -> anyhow::Result<()>;
 }
 
 /// Network trait defines the interface for a network service that can send and receive messages.
-pub trait Network: Send + Sync {
+pub trait Network {
     /// Sends a message to the network.
     fn send_message(&self, message: Message) -> anyhow::Result<()>;
 
-    /// Registers a message processor to handle incoming messages. 
+    /// Registers a message processor to handle incoming messages.
     /// At any point in time, there can be only one processor registered.
     /// Registering a new processor is illegal if there is already a processor registered, and causes an error.
-    fn register_processor(&mut self, processor: Box<Arc<Mutex<dyn MessageProcessor>>>) -> anyhow::Result<()>;
+    fn register_processor(
+        &mut self,
+        processor: Box<Rc<RefCell<dyn MessageProcessor>>>,
+    ) -> anyhow::Result<()>;
 
     /// Starts the network service.
     fn start(&mut self) -> anyhow::Result<()>;
