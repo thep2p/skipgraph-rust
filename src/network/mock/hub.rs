@@ -1,3 +1,4 @@
+use std::cell::RefCell;
 use crate::core::Identifier;
 use crate::network::mock::network::MockNetwork;
 use crate::network::{Message, Network};
@@ -16,10 +17,7 @@ impl NetworkHub {
         }
     }
 
-    pub fn new_mock_network(
-        self: &Arc<Self>,
-        identifier: Identifier,
-    ) -> anyhow::Result<Arc<Mutex<MockNetwork>>> {
+    pub fn new_mock_network(self: &Arc<Self>, identifier: Identifier, ) -> anyhow::Result<Rc<RefCell<MockNetwork>>> {
         let mut inner_networks = self
             .networks
             .write()
@@ -50,8 +48,9 @@ impl NetworkHub {
             .read()
             .map_err(|e| anyhow!("Failed to acquire read lock on network hub"))?;
         if let Some(mutex_network) = inner_networks.get(&message.target_node_id) {
-            let network = mutex_network.lock().
-                map_err(|e| { anyhow!("Failed to acquire lock on network {e}") })?;
+            let network = mutex_network
+                .lock()
+                .map_err(|e| anyhow!("Failed to acquire lock on network {e}"))?;
             network
                 .send_message(message)
                 .context("Failed to send message through network")?;
