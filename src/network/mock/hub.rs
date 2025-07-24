@@ -35,15 +35,6 @@ impl NetworkHub {
         Ok(mock_network)
     }
 
-    pub fn get_network(&self, identifier: &Identifier) -> Option<Rc<RefCell<MockNetwork>>> {
-        let inner_networks = self
-            .networks
-            .read()
-            .map_err(|_| anyhow!("Failed to acquire read lock on network hub"))
-            .ok()?;
-        inner_networks.get(identifier).cloned()
-    }
-
     pub fn route_message(&self, message: Message) -> anyhow::Result<()> {
         let inner_networks = self
             .networks

@@ -35,10 +35,4 @@ pub trait Network {
         &mut self,
         processor: Box<Rc<RefCell<dyn MessageProcessor>>>,
     ) -> anyhow::Result<()>;
-
-    /// Starts the network service.
-    fn start(&mut self) -> anyhow::Result<()>;
-
-    /// Stops the network service.
-    fn stop(&mut self) -> anyhow::Result<()>;
 }

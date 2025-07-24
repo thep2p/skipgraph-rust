@@ -52,14 +52,4 @@ impl Network for MockNetwork {
         self.processor = Some(processor);
         Ok(())
     }
-
-    fn start(&mut self) -> anyhow::Result<()> {
-        // No-op for mock network
-        Ok(())
-    }
-
-    fn stop(&mut self) -> anyhow::Result<()> {
-        // No-op for mock network
-        Ok(())
-    }
 }
