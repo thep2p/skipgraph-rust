@@ -1,4 +1,4 @@
-use crate::network::MessageType::TestMessage;
+use crate::network::Payload::TestMessage;
 use crate::network::{Message, MessageProcessor, Network};
 use std::cell::RefCell;
 use std::collections::HashSet;
@@ -24,14 +24,14 @@ impl MockMessageProcessor {
 
 impl MessageProcessor for MockMessageProcessor {
     fn process_incoming_message(&mut self, message: Message) -> anyhow::Result<()> {
-        match message.message_type {
+        match message.payload {
             TestMessage(content) => {
                 self.seen.insert(content);
                 Ok(())
             }
             _ => Err(anyhow::anyhow!(format!(
                 "Unknown message type {:?}",
-                message.message_type
+                message.payload
             ))),
         }
     }
@@ -45,7 +45,7 @@ fn test_mock_message_processor() {
     let mock_network = NetworkHub::new_mock_network(hub, identifier).unwrap();
     let mut processor = MockMessageProcessor::new();
     let message = Message {
-        message_type: TestMessage("Hello, World!".to_string()),
+        payload: TestMessage("Hello, World!".to_string()),
         target_node_id: random_identifier(),
         payload: Box::new(()),
     };
@@ -76,7 +76,7 @@ fn test_hub_route_message() {
     let mock_net_2 = NetworkHub::new_mock_network(hub, id_2).unwrap();
 
     let message = Message {
-        message_type: TestMessage("Test message".to_string()),
+        payload: TestMessage("Test message".to_string()),
         target_node_id: id_1,
         payload: Box::new(()),
     };

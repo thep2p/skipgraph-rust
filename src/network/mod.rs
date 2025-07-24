@@ -5,15 +5,15 @@ use std::any::Any;
 use std::cell::RefCell;
 use std::rc::Rc;
 
-/// MessageType enum defines the types of messages that can be sent over the network.
+/// Payload enum defines the semantics of the message payload that can be sent over the network.
 #[derive(Debug)]
-pub enum MessageType {
-    TestMessage(String), // A message for testing purposes, it is a simple string message, and is not used in production.
+pub enum Payload {
+    TestMessage(String), // A payload for testing purposes, it is a simple string message, and is not used in production.
 }
 
 /// Message struct represents a message that can be sent over the network.
 pub struct Message {
-    pub message_type: MessageType,
+    pub payload: Payload,
     pub target_node_id: Identifier,
 }
 
