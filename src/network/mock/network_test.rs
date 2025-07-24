@@ -81,12 +81,6 @@ fn test_hub_route_message() {
         payload: Box::new(()),
     };
 
-    let message2 = Message {
-        message_type: TestMessage("Test message2".to_string()),
-        target_node_id: id_1,
-        payload: Box::new(()),
-    };
-
     assert!(!msg_proc_1.borrow().has_seen("Test message"));
     assert!(mock_net_2.borrow().send_message(message).is_ok());
     assert!(msg_proc_1.borrow().has_seen("Test message"));
