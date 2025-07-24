@@ -29,35 +29,32 @@ impl MessageProcessor for MockMessageProcessor {
                 self.seen.insert(content);
                 Ok(())
             }
-            _ => Err(anyhow::anyhow!(format!(
-                "Unknown message type {:?}",
-                message.payload
-            ))),
         }
     }
 }
 
-/// Test for the MockMessageProcessor to ensure it correctly processes messages.
+/// This test verifies that `MockMessageProcessor` correctly processes and tracks incoming messages routed through a mock network.
 #[test]
 fn test_mock_message_processor() {
     let hub = NetworkHub::new();
     let identifier = random_identifier();
-    let mock_network = NetworkHub::new_mock_network(hub, identifier).unwrap();
-    let mut processor = MockMessageProcessor::new();
+    let mock_network = NetworkHub::new_mock_network(hub.clone(), identifier).unwrap();
+    let processor = MockMessageProcessor::new();
     let message = Message {
         payload: TestMessage("Hello, World!".to_string()),
-        target_node_id: random_identifier(),
-        payload: Box::new(()),
+        target_node_id: identifier,
     };
 
     assert!(!processor.borrow().has_seen("Hello, World!"));
-    processor
+    assert!(mock_network
         .borrow_mut()
-        .process_incoming_message(message)
-        .unwrap();
+        .register_processor(Box::new(processor.clone()))
+        .is_ok());
+    assert!(hub.borrow_mut().route_message(message).is_ok());
     assert!(processor.borrow().has_seen("Hello, World!"));
 }
 
+/// This test ensures correct routing and processing of messages between mock networks through the `NetworkHub`.
 #[test]
 fn test_hub_route_message() {
     use crate::network::mock::hub::NetworkHub;
@@ -78,7 +75,6 @@ fn test_hub_route_message() {
     let message = Message {
         payload: TestMessage("Test message".to_string()),
         target_node_id: id_1,
-        payload: Box::new(()),
     };
 
     assert!(!msg_proc_1.borrow().has_seen("Test message"));
