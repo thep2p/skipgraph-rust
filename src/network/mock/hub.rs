@@ -48,11 +48,11 @@ impl NetworkHub {
         let inner_networks = self
             .networks
             .read()
-            .map_err(|e| anyhow!("Failed to acquire read lock on network hub"))?;
+            .map_err(|_| anyhow!("Failed to acquire read lock on network hub"))?;
         if let Some(network) = inner_networks.get(&message.target_node_id) {
             network
                 .borrow()
-                .send_message(message)
+                .incoming_message(message)
                 .context("Failed to send message through network")?;
             Ok(())
         } else {
