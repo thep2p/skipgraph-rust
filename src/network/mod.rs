@@ -1,7 +1,6 @@
 pub mod mock;
 
 use crate::core::Identifier;
-use std::any::Any;
 use std::cell::RefCell;
 use std::rc::Rc;
 

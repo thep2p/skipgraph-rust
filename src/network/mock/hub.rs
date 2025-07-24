@@ -1,6 +1,6 @@
 use crate::core::Identifier;
 use crate::network::mock::network::MockNetwork;
-use crate::network::{Message, Network};
+use crate::network::{Message};
 use anyhow::{anyhow, Context};
 use std::cell::RefCell;
 use std::collections::HashMap;
@@ -23,7 +23,7 @@ impl NetworkHub {
         let mut inner_networks = inner_hub
             .networks
             .write()
-            .map_err(|e| anyhow!("Failed to acquire write lock on network hub"))?;
+            .map_err(|_| anyhow!("Failed to acquire write lock on network hub"))?;
         if inner_networks.contains_key(&identifier) {
             return Err(anyhow::anyhow!(
                 "Network with identifier {} already exists",
