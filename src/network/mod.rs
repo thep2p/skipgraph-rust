@@ -15,7 +15,6 @@ pub enum MessageType {
 pub struct Message {
     pub message_type: MessageType,
     pub target_node_id: Identifier,
-    pub payload: Box<dyn Any + Send>,
 }
 
 /// MessageProcessor trait defines the entity that processes the incoming network messages at this node.
