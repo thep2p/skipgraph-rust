@@ -16,6 +16,21 @@ impl MockNetwork {
             processor: None,
         }
     }
+
+    pub fn incoming_message(
+        &self,
+        message: Message,
+    ) -> anyhow::Result<()> {
+        if let Some(ref processor) = self.processor {
+            processor
+                .borrow_mut()
+                .process_incoming_message(message)
+                .context("Failed to process incoming message")?;
+            Ok(())
+        } else {
+            Err(anyhow::anyhow!("No message processor registered"))
+        }
+    }
 }
 
 impl Network for MockNetwork {
