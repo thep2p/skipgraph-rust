@@ -7,6 +7,9 @@ use std::collections::HashMap;
 use std::rc::Rc;
 use std::sync::RwLock;
 
+/// NetworkHub is a central hub that manages multiple mock networks.
+/// It allows for the creation of new mock networks and routing messages between them.
+/// Messages are routed completely through the hub in an in-memory fashion, simulating a network environment without actual network communication.
 pub struct NetworkHub {
     networks: RwLock<HashMap<Identifier, Rc<RefCell<MockNetwork>>>>,
 }
@@ -18,6 +21,7 @@ impl NetworkHub {
         }))
     }
 
+    /// Creates a new mock network with the given identifier and registers it in the hub.
     pub fn new_mock_network(hub: Rc<RefCell<Self>>, identifier: Identifier) -> anyhow::Result<Rc<RefCell<MockNetwork>>> {
         let inner_hub = hub.borrow();
         let mut inner_networks = inner_hub
@@ -35,6 +39,7 @@ impl NetworkHub {
         Ok(mock_network)
     }
 
+    /// Routes a message to the appropriate mock network based on the target node identifier.
     pub fn route_message(&self, message: Message) -> anyhow::Result<()> {
         let inner_networks = self
             .networks

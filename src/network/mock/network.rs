@@ -4,12 +4,15 @@ use anyhow::Context;
 use std::cell::RefCell;
 use std::rc::Rc;
 
+/// MockNetwork is a mock implementation of the Network trait for testing purposes.
+/// It does not perform any real network operations but simulates message routing and processing through a `NetworkHub`.
 pub struct MockNetwork {
     hub: Rc<RefCell<NetworkHub>>,
     processor: Option<Box<Rc<RefCell<dyn MessageProcessor>>>>,
 }
 
 impl MockNetwork {
+    /// Creates a new instance of MockNetwork with the given NetworkHub.
     pub fn new(hub: Rc<RefCell<NetworkHub>>) -> Self {
         MockNetwork {
             hub,
@@ -17,6 +20,11 @@ impl MockNetwork {
         }
     }
 
+    /// This is the event handler for processing incoming messages come through the mock network.
+    /// Arguments:
+    /// * `message`: The incoming message to be processed.
+    /// Returns:
+    /// * `Result<(), anyhow::Error>`: Returns Ok if the message was processed successfully, or an error if processing failed.
     pub fn incoming_message(
         &self,
         message: Message,
@@ -34,6 +42,7 @@ impl MockNetwork {
 }
 
 impl Network for MockNetwork {
+    /// Sends a message through the mock network by routing it through the NetworkHub.
     fn send_message(&self, message: Message) -> anyhow::Result<()> {
         self.hub
             .borrow()
@@ -42,6 +51,9 @@ impl Network for MockNetwork {
         Ok(())
     }
 
+    /// Registers a message processor to handle incoming messages.
+    /// Only one processor can be registered at a time.
+    /// If a processor is already registered, an error is returned.
     fn register_processor(
         &mut self,
         processor: Box<Rc<RefCell<dyn MessageProcessor>>>,
