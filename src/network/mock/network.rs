@@ -1,19 +1,20 @@
+use std::cell::RefCell;
+use std::rc::Rc;
 use crate::network::mock::hub::NetworkHub;
 use crate::network::{Message, MessageProcessor, Network};
 use anyhow::Context;
-use std::cell::RefCell;
-use std::rc::Rc;
+use std::sync::{Arc, Mutex};
 
 /// MockNetwork is a mock implementation of the Network trait for testing purposes.
 /// It does not perform any real network operations but simulates message routing and processing through a `NetworkHub`.
 pub struct MockNetwork {
-    hub: Rc<RefCell<NetworkHub>>,
-    processor: Option<Box<Rc<RefCell<dyn MessageProcessor>>>>,
+    hub: Arc<Mutex<NetworkHub>>,
+    processor: Option<Box<Arc<Mutex<dyn MessageProcessor + Send>>>>,
 }
 
 impl MockNetwork {
     /// Creates a new instance of MockNetwork with the given NetworkHub.
-    pub fn new(hub: Rc<RefCell<NetworkHub>>) -> Self {
+    pub fn new(hub: Arc<Mutex<NetworkHub>>) -> Self {
         MockNetwork {
             hub,
             processor: None,
@@ -31,7 +32,7 @@ impl MockNetwork {
     ) -> anyhow::Result<()> {
         if let Some(ref processor) = self.processor {
             processor
-                .borrow_mut()
+                .lock().unwrap()
                 .process_incoming_message(message)
                 .context("Failed to process incoming message")?;
             Ok(())
@@ -45,7 +46,7 @@ impl Network for MockNetwork {
     /// Sends a message through the mock network by routing it through the NetworkHub.
     fn send_message(&self, message: Message) -> anyhow::Result<()> {
         self.hub
-            .borrow()
+            .lock().unwrap()
             .route_message(message)
             .context("Failed to route message")?;
         Ok(())
@@ -56,7 +57,7 @@ impl Network for MockNetwork {
     /// If a processor is already registered, an error is returned.
     fn register_processor(
         &mut self,
-        processor: Box<Rc<RefCell<dyn MessageProcessor>>>,
+        processor: Box<Arc<Mutex<dyn MessageProcessor>>>,
     ) -> anyhow::Result<()> {
         if self.processor.is_some() {
             return Err(anyhow::anyhow!("A message processor is already registered"));
