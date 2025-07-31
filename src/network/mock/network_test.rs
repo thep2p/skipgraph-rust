@@ -81,3 +81,69 @@ fn test_hub_route_message() {
     assert!(mock_net_2.borrow().send_message(message).is_ok());
     assert!(msg_proc_1.borrow().has_seen("Test message"));
 }
+
+/// This test sends 10 messages concurrently from mock_net_2 to id_1 and verifies that all messages are processed.
+#[test]
+fn test_concurrent_message_sending() {
+    use crate::network::mock::hub::NetworkHub;
+    use std::thread;
+    use std::sync::{Arc, Barrier};
+
+    let hub = NetworkHub::new();
+
+    let id_1 = random_identifier();
+    let mock_net_1 = NetworkHub::new_mock_network(hub.clone(), id_1).unwrap();
+    let msg_proc_1 = MockMessageProcessor::new();
+    mock_net_1
+        .borrow_mut()
+        .register_processor(Box::new(msg_proc_1.clone()))
+        .expect("Failed to register message processor");
+
+    let id_2 = random_identifier();
+    let mock_net_2 = NetworkHub::new_mock_network(hub, id_2).unwrap();
+
+    // Create 10 different message contents
+    let message_contents: Vec<String> = (0..10)
+        .map(|i| format!("Concurrent message {}", i))
+        .collect();
+
+    // Set up a barrier to synchronize all threads
+    let barrier = Arc::new(Barrier::new(10));
+    let mut handles = vec![];
+
+    // Spawn 10 threads, each sending a different message
+    for i in 0..10 {
+        let content = message_contents[i].clone();
+        let barrier_clone = barrier.clone();
+        let mock_net_2_clone = mock_net_2.clone();
+        let id_1_clone = id_1.clone();
+
+        let handle = thread::spawn(move || {
+            let message = Message {
+                payload: TestMessage(content),
+                target_node_id: id_1_clone,
+            };
+
+            // Wait for all threads to reach this point
+            barrier_clone.wait();
+
+            // Send the message
+            mock_net_2_clone.borrow().send_message(message).unwrap();
+        });
+
+        handles.push(handle);
+    }
+
+    // Wait for all threads to complete
+    for handle in handles {
+        handle.join().unwrap();
+    }
+
+    // Verify that all messages were received
+    let processor = msg_proc_1.borrow();
+    for content in message_contents {
+        assert!(processor.has_seen(&content), "Message '{}' was not received", content);
+    }
+}
+
+
