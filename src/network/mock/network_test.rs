@@ -169,6 +169,7 @@ fn test_concurrent_message_sending() {
     let processor = msg_proc_1.lock().unwrap();
     for content in message_contents {
         assert!(processor.has_seen(&content), "Message '{}' was not received", content);
+        println!("Message '{}' was successfully processed", content);
     }
 }
 
