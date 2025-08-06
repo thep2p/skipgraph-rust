@@ -1,7 +1,8 @@
 use crate::network::Payload::TestMessage;
 use crate::network::{Message, MessageProcessor, Network};
 use std::collections::HashSet;
-use std::sync::{Arc, Mutex};
+use std::sync::{Arc, Mutex, Barrier};
+use std::thread;
 use crate::core::testutil::fixtures::random_identifier;
 use crate::network::mock::hub::NetworkHub;
 
@@ -69,8 +70,6 @@ fn test_mock_message_processor() {
 /// This test ensures correct routing and processing of messages between mock networks through the `NetworkHub`.
 #[test]
 fn test_hub_route_message() {
-    use crate::network::mock::hub::NetworkHub;
-
     let hub = NetworkHub::new();
 
     let id_1 = random_identifier();
@@ -108,10 +107,6 @@ fn test_hub_route_message() {
 /// This test sends 10 messages concurrently from mock_net_2 to id_1 and verifies that all messages are processed.
 #[test]
 fn test_concurrent_message_sending() {
-    use crate::network::mock::hub::NetworkHub;
-    use std::thread;
-    use std::sync::{Arc, Barrier};
-
     let hub = NetworkHub::new();
 
     let id_1 = random_identifier();
@@ -172,5 +167,3 @@ fn test_concurrent_message_sending() {
         println!("Message '{}' was successfully processed", content);
     }
 }
-
-
