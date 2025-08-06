@@ -1,10 +1,10 @@
+use crate::core::testutil::fixtures::random_identifier;
+use crate::network::mock::hub::NetworkHub;
 use crate::network::Payload::TestMessage;
 use crate::network::{Message, MessageProcessor, Network};
 use std::cell::RefCell;
 use std::collections::HashSet;
 use std::rc::Rc;
-use crate::core::testutil::fixtures::random_identifier;
-use crate::network::mock::hub::NetworkHub;
 
 struct MockMessageProcessor {
     seen: HashSet<String>,

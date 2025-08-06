@@ -1,6 +1,6 @@
 use crate::core::Identifier;
 use crate::network::mock::network::MockNetwork;
-use crate::network::{Message};
+use crate::network::Message;
 use anyhow::{anyhow, Context};
 use std::cell::RefCell;
 use std::collections::HashMap;
@@ -22,7 +22,10 @@ impl NetworkHub {
     }
 
     /// Creates a new mock network with the given identifier and registers it in the hub.
-    pub fn new_mock_network(hub: Rc<RefCell<Self>>, identifier: Identifier) -> anyhow::Result<Rc<RefCell<MockNetwork>>> {
+    pub fn new_mock_network(
+        hub: Rc<RefCell<Self>>,
+        identifier: Identifier,
+    ) -> anyhow::Result<Rc<RefCell<MockNetwork>>> {
         let inner_hub = hub.borrow();
         let mut inner_networks = inner_hub
             .networks
