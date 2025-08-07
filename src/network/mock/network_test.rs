@@ -58,7 +58,7 @@ fn test_mock_message_processor() {
             .is_ok());
     }
     {
-        let mut hub_guard = hub.lock().unwrap();
+        let hub_guard = hub.lock().unwrap();
         assert!(hub_guard.route_message(message).is_ok());
     }
     {
@@ -124,7 +124,7 @@ fn test_concurrent_message_sending() {
 
     // Create 10 different message contents
     let message_contents: Vec<String> = (0..10)
-        .map(|i| format!("Concurrent message {}", i))
+        .map(|i| format!("Concurrent message {i}"))
         .collect();
 
     // Set up a barrier to synchronize all threads
@@ -132,16 +132,16 @@ fn test_concurrent_message_sending() {
     let mut handles = vec![];
 
     // Spawn 10 threads, each sending a different message
-    for i in 0..10 {
-        let content = message_contents[i].clone();
+    for content in message_contents.iter() {
+        let content = content.clone();
         let barrier_clone = barrier.clone();
         let mock_net_2_clone = mock_net_2.clone();
-        let id_1_clone = id_1.clone();
+        let id_1_copy = id_1;
 
         let handle = thread::spawn(move || {
             let message = Message {
                 payload: TestMessage(content),
-                target_node_id: id_1_clone,
+                target_node_id: id_1_copy,
             };
 
             // Wait for all threads to reach this point
@@ -163,7 +163,7 @@ fn test_concurrent_message_sending() {
     // Verify that all messages were received
     let processor = msg_proc_1.lock().unwrap();
     for content in message_contents {
-        assert!(processor.has_seen(&content), "Message '{}' was not received", content);
-        println!("Message '{}' was successfully processed", content);
+        assert!(processor.has_seen(&content), "Message '{content}' was not received");
+        println!("Message '{content}' was successfully processed");
     }
 }
