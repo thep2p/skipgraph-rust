@@ -22,7 +22,7 @@ impl MockNetwork {
     /// This is the event handler for processing incoming messages come through the mock network.
     /// Arguments:
     /// * `message`: The incoming message to be processed.
-    /// Returns:
+    ///   Returns:
     /// * `Result<(), anyhow::Error>`: Returns Ok if the message was processed successfully, or an error if processing failed.
     pub fn incoming_message(
         &self,
