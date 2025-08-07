@@ -30,7 +30,8 @@ impl MockNetwork {
     ) -> anyhow::Result<()> {
         if let Some(ref processor) = self.processor {
             processor
-                .lock().unwrap()
+                .lock()
+                .map_err(|_| anyhow::anyhow!("Failed to acquire lock on message processor"))?
                 .process_incoming_message(message)
                 .context("Failed to process incoming message")?;
             Ok(())
@@ -44,7 +45,8 @@ impl Network for MockNetwork {
     /// Sends a message through the mock network by routing it through the NetworkHub.
     fn send_message(&self, message: Message) -> anyhow::Result<()> {
         self.hub
-            .lock().unwrap()
+            .lock()
+            .map_err(|_| anyhow::anyhow!("Failed to acquire lock on network hub"))?
             .route_message(message)
             .context("Failed to route message")?;
         Ok(())
