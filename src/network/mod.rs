@@ -1,8 +1,6 @@
 pub mod mock;
 
 use crate::core::Identifier;
-use std::cell::RefCell;
-use std::rc::Rc;
 use std::sync::{Arc, Mutex};
 
 /// Payload enum defines the semantics of the message payload that can be sent over the network.
