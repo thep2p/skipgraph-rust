@@ -22,8 +22,6 @@ impl MockMessageProcessor {
     }
 }
 
-unsafe impl Send for MockMessageProcessor {}
-
 impl MessageProcessor for MockMessageProcessor {
     fn process_incoming_message(&mut self, message: Message) -> anyhow::Result<()> {
         match message.payload {
