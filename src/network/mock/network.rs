@@ -5,6 +5,7 @@ use std::sync::{Arc, Mutex};
 
 /// MockNetwork is a mock implementation of the Network trait for testing purposes.
 /// It does not perform any real network operations but simulates message routing and processing through a `NetworkHub`.
+#[derive(Debug)]
 pub struct MockNetwork {
     hub: Arc<Mutex<NetworkHub>>,
     processor: Option<Box<Arc<Mutex<dyn MessageProcessor>>>>,

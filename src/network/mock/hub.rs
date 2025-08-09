@@ -8,6 +8,7 @@ use std::sync::{Arc, Mutex, RwLock};
 /// NetworkHub is a central hub that manages multiple mock networks.
 /// It allows for the creation of new mock networks and routing messages between them.
 /// Messages are routed completely through the hub in an in-memory fashion, simulating a network environment without actual network communication.
+#[derive(Debug)]
 pub struct NetworkHub {
     networks: RwLock<HashMap<Identifier, Arc<Mutex<MockNetwork>>>>,
 }
