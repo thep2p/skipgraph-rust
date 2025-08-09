@@ -305,6 +305,7 @@ impl Clone for LocalNode {
             id: self.id,
             mem_vec: self.mem_vec,
             lt: self.lt.clone(),
+            network: self.network.clone(),
         }
     }
 }
@@ -330,6 +331,7 @@ mod tests {
             id,
             mem_vec,
             lt: Box::new(ArrayLookupTable::new(&span_fixture())),
+            network: None,
         };
         assert_eq!(node.get_identifier(), &id);
         assert_eq!(node.get_membership_vector(), &mem_vec);
@@ -363,6 +365,7 @@ mod tests {
                 id: random_identifier(),
                 mem_vec: random_membership_vector(),
                 lt: Box::new(lt.clone()),
+                network: None,
             };
 
             let direction = Direction::Left;
@@ -413,6 +416,7 @@ mod tests {
                 id: random_identifier(),
                 mem_vec: random_membership_vector(),
                 lt: Box::new(lt.clone()),
+                network: None,
             };
 
             let actual_result = node.search_by_id(&req).unwrap();
@@ -478,6 +482,7 @@ mod tests {
                 id: random_identifier(),
                 mem_vec: random_membership_vector(),
                 lt: Box::new(lt.clone()),
+                network: None,
             };
 
             let direction = Direction::Left;
@@ -538,6 +543,7 @@ mod tests {
                 id: random_identifier(),
                 mem_vec: random_membership_vector(),
                 lt: Box::new(lt.clone()),
+                network: None,
             };
 
             let direction = Direction::Right;
@@ -571,6 +577,7 @@ mod tests {
             id: random_identifier(),
             mem_vec: random_membership_vector(),
             lt: Box::new(lt.clone()),
+            network: None,
         };
 
         // This test should ensure that when the exact target is found, it returns the correct level and identifier.
@@ -616,6 +623,7 @@ mod tests {
             id: random_identifier(),
             mem_vec: random_membership_vector(),
             lt: Box::new(lt.clone()),
+            network: None,
         });
 
         // Ensure the target is not the same as the node's identifier
@@ -697,6 +705,7 @@ mod tests {
             id: random_identifier(),
             mem_vec: random_membership_vector(),
             lt: Box::new(lt.clone()),
+            network: None,
         });
 
         // Ensure the target is not the same as the node's identifier
@@ -805,6 +814,7 @@ mod tests {
             id: random_identifier(),
             mem_vec: random_membership_vector(),
             lt: Box::new(MockErrorLookupTable),
+            network: None,
         };
 
         // Create a random search request (any search request will return an error as
