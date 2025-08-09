@@ -158,7 +158,100 @@ impl LocalNode {
     /// and lookup table.
     #[cfg(test)]
     pub(crate) fn new(id: Identifier, mem_vec: MembershipVector, lt: Box<dyn LookupTable>) -> Self {
-        LocalNode { id, mem_vec, lt }
+        LocalNode { id, mem_vec, lt, network: None }
+    }
+
+    /// Create a new `LocalNode` with the provided identifier, membership vector,
+    /// lookup table, and network connection.
+    pub(crate) fn new_with_network(
+        id: Identifier, 
+        mem_vec: MembershipVector, 
+        lt: Box<dyn LookupTable>,
+        network: Arc<Mutex<dyn Network>>
+    ) -> Self {
+        LocalNode { id, mem_vec, lt, network: Some(network) }
+    }
+
+    /// Sets the network for this LocalNode. This is useful for connecting the node
+    /// to the network after creation.
+    pub(crate) fn set_network(&mut self, network: Arc<Mutex<dyn Network>>) {
+        self.network = Some(network);
+    }
+
+    /// Sends a message through the network if available
+    fn send_message(&self, message: Message) -> anyhow::Result<()> {
+        if let Some(ref network) = self.network {
+            network
+                .lock()
+                .map_err(|_| anyhow!("Failed to acquire network lock"))?
+                .send_message(message)
+                .context("Failed to send message through network")
+        } else {
+            Err(anyhow!("No network connection available"))
+        }
+    }
+}
+
+impl MessageProcessor for LocalNode {
+    /// Process incoming network messages for skip graph operations
+    fn process_incoming_message(&mut self, message: Message) -> anyhow::Result<()> {
+        match message.payload {
+            Payload::SearchRequest(search_req) => {
+                // Process the search request using the local node's search capability
+                match self.search_by_id(&search_req) {
+                    Ok(search_result) => {
+                        // Create a response message with the search result
+                        let response_message = Message {
+                            payload: Payload::SearchResponse(search_result),
+                            target_node_id: message.target_node_id, // Send response back to original requester
+                        };
+                        
+                        self.send_message(response_message)
+                            .context("Failed to send search response")
+                    }
+                    Err(e) => Err(anyhow!("Search failed: {}", e)),
+                }
+            }
+            Payload::JoinRequest { node_id, level } => {
+                // Handle join request from another node
+                // For now, just acknowledge the join request
+                // In a full implementation, this would involve the skip graph join protocol
+                let response = Payload::JoinResponse {
+                    success: true,
+                    message: format!("Join request received for node {} at level {}", node_id, level),
+                };
+                
+                let response_message = Message {
+                    payload: response,
+                    target_node_id: node_id,
+                };
+                
+                self.send_message(response_message)
+                    .context("Failed to send join response")
+            }
+            Payload::JoinResponse { success, message } => {
+                // Handle join response
+                if success {
+                    tracing::debug!("Join successful: {}", message);
+                } else {
+                    tracing::warn!("Join failed: {}", message);
+                }
+                Ok(())
+            }
+            Payload::SearchResponse(search_result) => {
+                // Handle search response
+                tracing::debug!(
+                    "Received search response: target={}, result={}",
+                    search_result.target(),
+                    search_result.result()
+                );
+                Ok(())
+            }
+            Payload::TestMessage(msg) => {
+                tracing::debug!("Received test message: {}", msg);
+                Ok(())
+            }
+        }
     }
 }
 
