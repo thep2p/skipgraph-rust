@@ -189,8 +189,8 @@ impl LocalNode {
     /// Create a new `LocalNode` with the provided identifier, membership vector,
     /// lookup table, and network connection.
     pub(crate) fn new_with_network(
-        id: Identifier, 
-        mem_vec: MembershipVector, 
+        id: Identifier,
+        mem_vec: MembershipVector,
         lt: Box<dyn LookupTable>,
         network: Arc<Mutex<dyn Network>>
     ) -> Self {
@@ -243,7 +243,7 @@ impl MessageProcessor for LocalNode {
                 // In a full implementation, this would involve the skip graph join protocol
                 let response = Payload::JoinResponse {
                     success: true,
-                    message: format!("Join request received for node {} at level {}", node_id, level),
+                    message: format!("Join request received for node {node_id} at level {level}"),
                 };
                 
                 let response_message = Message {

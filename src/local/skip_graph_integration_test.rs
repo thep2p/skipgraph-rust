@@ -10,7 +10,7 @@ fn test_create_small_skip_graph() {
     let _span = span_fixture();
     
     let result = create_skip_graph_with_mock_network(5);
-    assert!(result.is_ok(), "Failed to create skip graph: {:?}", result);
+    assert!(result.is_ok(), "Failed to create skip graph: {result:?}");
     
     let (nodes, _hub) = result.unwrap();
     assert_eq!(nodes.len(), 5, "Expected 5 nodes in skip graph");
@@ -46,8 +46,7 @@ fn test_sequential_search_all_nodes() {
             let result = searcher.search_by_id(&search_req);
             assert!(
                 result.is_ok(),
-                "Node {} failed to search for node {}: {:?}",
-                i, j, result
+                "Node {i} failed to search for node {j}: {result:?}"
             );
             
             // The search should return a valid result
@@ -101,8 +100,7 @@ fn test_concurrent_search_all_nodes() {
                 let result = searcher.search_by_id(&search_req);
                 assert!(
                     result.is_ok(),
-                    "Concurrent search from node {} to node {} failed: {:?}",
-                    i, j, result
+                    "Concurrent search from node {i} to node {j} failed: {result:?}"
                 );
                 
                 let search_result = result.unwrap();
@@ -124,7 +122,7 @@ fn test_concurrent_search_all_nodes() {
     // Wait for all concurrent searches to complete
     let timeout = Duration::from_secs(10);
     let result = join_all_with_timeout(handles.into_boxed_slice(), timeout);
-    assert!(result.is_ok(), "Some concurrent searches timed out or failed: {:?}", result);
+    assert!(result.is_ok(), "Some concurrent searches timed out or failed: {result:?}");
 }
 
 /// Test that verifies lookup tables are properly initialized after skip graph construction
@@ -155,14 +153,12 @@ fn test_lookup_tables_validity() {
         
         assert!(
             left_result.is_ok(),
-            "Node {} failed left search: {:?}",
-            i, left_result
+            "Node {i} failed left search: {left_result:?}",
         );
         
         assert!(
             right_result.is_ok(),
-            "Node {} failed right search: {:?}",
-            i, right_result
+            "Node {i} failed right search: {right_result:?}"
         );
     }
 }
@@ -206,8 +202,7 @@ fn test_larger_skip_graph() {
         let result = nodes[searcher_idx].search_by_id(&search_req);
         assert!(
             result.is_ok(),
-            "Sample search {} failed: {:?}",
-            i, result
+            "Sample search {i} failed: {result:?}",
         );
     }
 }
@@ -262,7 +257,7 @@ fn test_search_performance_benchmark() {
         );
         
         let result = nodes[searcher_idx].search_by_id(&search_req);
-        assert!(result.is_ok(), "Benchmark search {} failed", i);
+        assert!(result.is_ok(), "Benchmark search {i} failed");
     }
     
     let elapsed = start_time.elapsed();
@@ -276,7 +271,6 @@ fn test_search_performance_benchmark() {
     // Searches should be reasonably fast (less than 10ms average for this test size)
     assert!(
         avg_search_time < Duration::from_millis(10),
-        "Average search time too slow: {:?}",
-        avg_search_time
+        "Average search time too slow: {avg_search_time:?}"
     );
 }
