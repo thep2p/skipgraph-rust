@@ -1,6 +1,4 @@
-#[cfg(test)]
-mod network;
-#[cfg(test)]
-mod hub;
+pub mod network;
+pub mod hub;
 #[cfg(test)]
 mod network_test;
