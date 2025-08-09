@@ -3,15 +3,19 @@ use crate::core::{
     Identifier, IdentifierSearchRequest, IdentifierSearchResult, LookupTable, MembershipVector,
     Node,
 };
+use crate::network::{Message, MessageProcessor, Network, Payload};
+use anyhow::{anyhow, Context};
 use std::fmt;
 use std::fmt::Formatter;
 use std::rc::Rc;
+use std::sync::{Arc, Mutex};
 
 /// LocalNode is a struct that represents a single node in the local implementation of the skip graph.
 pub(crate) struct LocalNode {
     id: Identifier,
     mem_vec: MembershipVector,
     lt: Box<dyn LookupTable>,
+    network: Option<Arc<Mutex<dyn Network>>>,
 }
 
 impl Node for LocalNode {
