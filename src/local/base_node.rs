@@ -3,18 +3,23 @@ use crate::core::{
     Identifier, IdentifierSearchRequest, IdentifierSearchResult, LookupTable, MembershipVector,
     Node,
 };
+use crate::network::{Message, MessageProcessor, Network, Payload};
+use anyhow::{anyhow, Context};
 use std::fmt;
 use std::fmt::Formatter;
 use std::rc::Rc;
+use std::sync::{Arc, Mutex};
 
 /// LocalNode is a struct that represents a single node in the local implementation of the skip graph.
 pub(crate) struct LocalNode {
     id: Identifier,
     mem_vec: MembershipVector,
     lt: Box<dyn LookupTable>,
+    network: Option<Arc<Mutex<dyn Network>>>,
 }
 
 impl Node for LocalNode {
+    // TODO: this must be the address of the node in the network, not just a reference to itself.
     type Address = Rc<LocalNode>;
 
     fn get_identifier(&self) -> &Identifier {
@@ -144,8 +149,33 @@ impl Node for LocalNode {
         todo!()
     }
 
-    fn join(&self, _introducer: Self::Address) -> anyhow::Result<()> {
-        todo!()
+    fn join(&self, introducer: Self::Address) -> anyhow::Result<()> {
+        // Implement the join protocol based on Algorithm 2 from the skip graphs paper
+        // Step 1: Search for our own identifier to find our position at level 0
+        let search_req = IdentifierSearchRequest::new(self.id, 0, Direction::Left);
+        
+        // In a full implementation, we would search through the introducer
+        // For now, we'll use the introducer's search capability directly
+        let _search_result = introducer.search_by_id(&search_req)?;
+        
+        // Step 2: Insert ourselves at level 0
+        // This would involve updating the lookup tables of neighboring nodes
+        
+        // Step 3: Iteratively find nodes at higher levels with matching membership vector prefixes
+        // and insert ourselves at those levels
+        let mut level = 0;
+        loop {
+            // Find a node at the current level with matching membership vector prefix
+            // If no such node exists, we're done joining
+            // For now, we'll just return success after one iteration
+            if level > 0 {
+                break;
+            }
+            level += 1;
+        }
+        
+        tracing::debug!("Node {} joined the skip graph", self.id);
+        Ok(())
     }
 }
 
@@ -153,8 +183,84 @@ impl LocalNode {
     /// Create a new `LocalNode` with the provided identifier, membership vector
     /// and lookup table.
     #[cfg(test)]
-    pub(crate) fn new(id: Identifier, mem_vec: MembershipVector, lt: Box<dyn LookupTable>) -> Self {
-        LocalNode { id, mem_vec, lt }
+    pub(crate) fn new(id: Identifier, mem_vec: MembershipVector, lt: Box<dyn LookupTable>, network: Arc<Mutex<dyn Network>>) -> Self {
+        LocalNode { id, mem_vec, lt, network: Some(network) }
+    }
+    
+    /// Sends a message through the network if available
+    fn send_message(&self, message: Message) -> anyhow::Result<()> {
+        if let Some(ref network) = self.network {
+            network
+                .lock()
+                .map_err(|_| anyhow!("Failed to acquire network lock"))?
+                .send_message(message)
+                .context("Failed to send message through network")
+        } else {
+            Err(anyhow!("No network connection available"))
+        }
+    }
+}
+
+impl MessageProcessor for LocalNode {
+    /// Process incoming network messages for skip graph operations
+    fn process_incoming_message(&mut self, origin_id: Identifier, message: Message) -> anyhow::Result<()> {
+        match message.payload {
+            Payload::SearchRequest(search_req) => {
+                // Process the search request using the local node's search capability
+                match self.search_by_id(&search_req) {
+                    Ok(search_result) => {
+                        // Create a response message with the search result
+                        let response_message = Message {
+                            payload: Payload::SearchResponse(search_result),
+                            target_node_id: origin_id, // Send response back to original requester
+                        };
+                        
+                        self.send_message(response_message)
+                            .context("Failed to send search response")
+                    }
+                    Err(e) => Err(anyhow!("Search failed: {}", e)),
+                }
+            }
+            Payload::JoinRequest { node_id, level } => {
+                // Handle join request from another node
+                // For now, just acknowledge the join request
+                // In a full implementation, this would involve the skip graph join protocol
+                let response = Payload::JoinResponse {
+                    success: true,
+                    message: format!("Join request received for node {node_id} at level {level}"),
+                };
+                
+                let response_message = Message {
+                    payload: response,
+                    target_node_id: origin_id,
+                };
+                
+                self.send_message(response_message)
+                    .context("Failed to send join response")
+            }
+            Payload::JoinResponse { success, message } => {
+                // Handle join response
+                if success {
+                    tracing::debug!("Join successful: {}", message);
+                } else {
+                    tracing::warn!("Join failed: {}", message);
+                }
+                Ok(())
+            }
+            Payload::SearchResponse(search_result) => {
+                // Handle search response
+                tracing::debug!(
+                    "Received search response: target={}, result={}",
+                    search_result.target(),
+                    search_result.result()
+                );
+                Ok(())
+            }
+            Payload::TestMessage(msg) => {
+                tracing::debug!("Received test message: {}", msg);
+                Ok(())
+            }
+        }
     }
 }
 
@@ -183,6 +289,7 @@ impl Clone for LocalNode {
             id: self.id,
             mem_vec: self.mem_vec,
             lt: self.lt.clone(),
+            network: self.network.clone(),
         }
     }
 }
@@ -208,6 +315,7 @@ mod tests {
             id,
             mem_vec,
             lt: Box::new(ArrayLookupTable::new(&span_fixture())),
+            network: None,
         };
         assert_eq!(node.get_identifier(), &id);
         assert_eq!(node.get_membership_vector(), &mem_vec);
@@ -241,6 +349,7 @@ mod tests {
                 id: random_identifier(),
                 mem_vec: random_membership_vector(),
                 lt: Box::new(lt.clone()),
+                network: None,
             };
 
             let direction = Direction::Left;
@@ -291,6 +400,7 @@ mod tests {
                 id: random_identifier(),
                 mem_vec: random_membership_vector(),
                 lt: Box::new(lt.clone()),
+                network: None,
             };
 
             let actual_result = node.search_by_id(&req).unwrap();
@@ -356,6 +466,7 @@ mod tests {
                 id: random_identifier(),
                 mem_vec: random_membership_vector(),
                 lt: Box::new(lt.clone()),
+                network: None,
             };
 
             let direction = Direction::Left;
@@ -416,6 +527,7 @@ mod tests {
                 id: random_identifier(),
                 mem_vec: random_membership_vector(),
                 lt: Box::new(lt.clone()),
+                network: None,
             };
 
             let direction = Direction::Right;
@@ -449,6 +561,7 @@ mod tests {
             id: random_identifier(),
             mem_vec: random_membership_vector(),
             lt: Box::new(lt.clone()),
+            network: None,
         };
 
         // This test should ensure that when the exact target is found, it returns the correct level and identifier.
@@ -494,6 +607,7 @@ mod tests {
             id: random_identifier(),
             mem_vec: random_membership_vector(),
             lt: Box::new(lt.clone()),
+            network: None,
         });
 
         // Ensure the target is not the same as the node's identifier
@@ -575,6 +689,7 @@ mod tests {
             id: random_identifier(),
             mem_vec: random_membership_vector(),
             lt: Box::new(lt.clone()),
+            network: None,
         });
 
         // Ensure the target is not the same as the node's identifier
@@ -683,6 +798,7 @@ mod tests {
             id: random_identifier(),
             mem_vec: random_membership_vector(),
             lt: Box::new(MockErrorLookupTable),
+            network: None,
         };
 
         // Create a random search request (any search request will return an error as

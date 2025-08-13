@@ -1,6 +1,6 @@
 use crate::core::Identifier;
 use crate::network::mock::network::MockNetwork;
-use crate::network::Message;
+use crate::network::{Message};
 use anyhow::{anyhow, Context};
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex, RwLock};
@@ -8,6 +8,7 @@ use std::sync::{Arc, Mutex, RwLock};
 /// NetworkHub is a central hub that manages multiple mock networks.
 /// It allows for the creation of new mock networks and routing messages between them.
 /// Messages are routed completely through the hub in an in-memory fashion, simulating a network environment without actual network communication.
+#[derive(Debug)]
 pub struct NetworkHub {
     networks: RwLock<HashMap<Identifier, Arc<Mutex<MockNetwork>>>>,
 }
@@ -37,13 +38,13 @@ impl NetworkHub {
                 identifier
             ));
         }
-        let mock_network = Arc::new(Mutex::new(MockNetwork::new(hub.clone())));
+        let mock_network = Arc::new(Mutex::new(MockNetwork::new(hub.clone(), identifier)));
         inner_networks.insert(identifier, mock_network.clone());
         Ok(mock_network)
     }
 
     /// Routes a message to the appropriate mock network based on the target node identifier.
-    pub fn route_message(&self, message: Message) -> anyhow::Result<()> {
+    pub fn route_message(&self, message: Message, origin_id: Identifier) -> anyhow::Result<()> {
         let inner_networks = self
             .networks
             .read()
@@ -53,7 +54,7 @@ impl NetworkHub {
                 .lock()
                 .map_err(|_| anyhow!("Failed to acquire lock on network"))?;
             network_guard
-                .incoming_message(message)
+                .incoming_message(message, origin_id)
                 .context("Failed to send message through network")?;
             Ok(())
         } else {

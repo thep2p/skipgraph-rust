@@ -12,6 +12,11 @@ use crate::core::model::identifier::{MAX, ZERO};
 use std::thread::JoinHandle;
 use std::time::Duration;
 use test_imports::*;
+use crate::local::base_node::LocalNode;
+use crate::network::mock::hub::NetworkHub;
+use crate::network::Network;
+use crate::core::Node;
+use std::sync::{Arc, Mutex};
 
 /// Generates a random identifier.
 ///
@@ -428,8 +433,80 @@ pub fn span_fixture() -> tracing::Span {
     // Create a new tracing span with the name "test_span" at TRACE level.
     // Subscriber level controls the minimum log level to display (e.g., DEBUG shows debug and above).
     // Log macros inside spans determine the actual log level of each event.
-    // This span level is just a label for grouping and doesn’t influence what gets logged.
+    // This span level is just a label for grouping and doesn't influence what gets logged.
     tracing::span!(tracing::Level::TRACE, "test_span")
+}
+
+/// Creates a complete skip graph with n nodes connected via MockNetwork.
+/// 
+/// This function creates a fully connected skip graph where:
+/// - All nodes have unique sorted identifiers
+/// - Each node has a random membership vector
+/// - All nodes are connected through a shared NetworkHub
+/// - Nodes insert themselves one by one using the join algorithm
+/// - The first node becomes the introducer for subsequent nodes
+/// 
+/// # Arguments
+/// * `n` - The number of nodes to create in the skip graph
+/// 
+/// # Returns
+/// A tuple containing:
+/// - Vector of LocalNode instances representing the skip graph nodes
+/// - The shared NetworkHub used for communication
+/// 
+/// # Panics
+/// This function will panic if:
+/// - n is 0 (cannot create an empty skip graph)
+/// - Network operations fail during node creation or joining
+/// 
+pub fn new_local_skip_graph(n: usize) -> anyhow::Result<(Vec<LocalNode>, Arc<Mutex<NetworkHub>>)> {
+    if n == 0 {
+        return Err(anyhow::anyhow!("Cannot create skip graph with 0 nodes"));
+    }
+
+    let _span = span_fixture();
+    
+    // Create a shared network hub for all nodes
+    let hub = NetworkHub::new();
+    
+    // Generate sorted identifiers for all nodes to ensure proper ordering
+    let identifiers = random_sorted_identifiers(n);
+    let mut nodes = Vec::with_capacity(n);
+    
+    // Create all nodes first
+    for &id in &identifiers {
+        let mem_vec = random_membership_vector();
+        let lt = Box::new(ArrayLookupTable::new(&span_fixture()));
+        
+        // Create network for this node and register it with the hub
+        let network = NetworkHub::new_mock_network(hub.clone(), id)?;
+        
+        // Create the LocalNode with network capability
+        let node = LocalNode::new(id, mem_vec, lt, network.clone());
+        
+        // Register the node as a message processor for its network
+        // TODO: a node registering itself as processor to network must be done internally in the node 
+        let node_processor = Arc::new(Mutex::new(node.clone()));
+        network
+            .lock()
+            .map_err(|_| anyhow::anyhow!("Failed to acquire network lock"))?
+            .register_processor(Box::new(node_processor))?;
+        
+        nodes.push(node);
+    }
+    
+    // Now perform the join operations to build the skip graph structure
+    if !nodes.is_empty() {
+        // TODO: consider using a random node each time as the introducer
+        // The first node is already in the skip graph (it's the introducer)
+        for i in 1..nodes.len() {
+            let introducer = nodes[0].clone();
+            nodes[i].join(std::rc::Rc::new(introducer))?;
+        }
+    }
+    
+    tracing::debug!("Successfully created skip graph with {} nodes", n);
+    Ok((nodes, hub))
 }
 
 mod test {

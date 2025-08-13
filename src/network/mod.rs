@@ -1,12 +1,23 @@
 pub mod mock;
 
-use crate::core::Identifier;
+use crate::core::{Identifier, IdentifierSearchRequest, IdentifierSearchResult};
 use std::sync::{Arc, Mutex};
 
 /// Payload enum defines the semantics of the message payload that can be sent over the network.
 #[derive(Debug)]
 pub enum Payload {
     TestMessage(String), // A payload for testing purposes, it is a simple string message, and is not used in production.
+    // Skip graph operations
+    SearchRequest(IdentifierSearchRequest),
+    SearchResponse(IdentifierSearchResult),
+    JoinRequest {
+        node_id: Identifier,
+        level: usize,
+    },
+    JoinResponse {
+        success: bool,
+        message: String,
+    },
 }
 
 /// Message struct represents a message that can be sent over the network.
@@ -16,12 +27,12 @@ pub struct Message {
 }
 
 /// MessageProcessor trait defines the entity that processes the incoming network messages at this node.
-pub trait MessageProcessor: Send {
-    fn process_incoming_message(&mut self, message: Message) -> anyhow::Result<()>;
+pub trait MessageProcessor: Send + std::fmt::Debug {
+    fn process_incoming_message(&mut self, origin_id: Identifier, message: Message) -> anyhow::Result<()>;
 }
 
 /// Network trait defines the interface for a network service that can send and receive messages.
-pub trait Network {
+pub trait Network: Send + Sync {
     /// Sends a message to the network.
     fn send_message(&self, message: Message) -> anyhow::Result<()>;
 
