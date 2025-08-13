@@ -182,29 +182,10 @@ impl LocalNode {
     /// Create a new `LocalNode` with the provided identifier, membership vector
     /// and lookup table.
     #[cfg(test)]
-    pub(crate) fn new(id: Identifier, mem_vec: MembershipVector, lt: Box<dyn LookupTable>) -> Self {
-        LocalNode { id, mem_vec, lt, network: None }
-    }
-
-    /// Create a new `LocalNode` with the provided identifier, membership vector,
-    /// lookup table, and network connection.
-    #[allow(dead_code)]
-    pub(crate) fn new_with_network(
-        id: Identifier,
-        mem_vec: MembershipVector,
-        lt: Box<dyn LookupTable>,
-        network: Arc<Mutex<dyn Network>>
-    ) -> Self {
+    pub(crate) fn new(id: Identifier, mem_vec: MembershipVector, lt: Box<dyn LookupTable>, network: Arc<Mutex<dyn Network>>) -> Self {
         LocalNode { id, mem_vec, lt, network: Some(network) }
     }
-
-    /// Sets the network for this LocalNode. This is useful for connecting the node
-    /// to the network after creation.
-    #[allow(dead_code)]
-    pub(crate) fn set_network(&mut self, network: Arc<Mutex<dyn Network>>) {
-        self.network = Some(network);
-    }
-
+    
     /// Sends a message through the network if available
     fn send_message(&self, message: Message) -> anyhow::Result<()> {
         if let Some(ref network) = self.network {
