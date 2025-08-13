@@ -459,7 +459,7 @@ pub fn span_fixture() -> tracing::Span {
 /// - n is 0 (cannot create an empty skip graph)
 /// - Network operations fail during node creation or joining
 /// 
-pub fn create_skip_graph_with_mock_network(n: usize) -> anyhow::Result<(Vec<LocalNode>, Arc<Mutex<NetworkHub>>)> {
+pub fn new_local_skip_graph(n: usize) -> anyhow::Result<(Vec<LocalNode>, Arc<Mutex<NetworkHub>>)> {
     if n == 0 {
         return Err(anyhow::anyhow!("Cannot create skip graph with 0 nodes"));
     }
