@@ -19,6 +19,7 @@ pub(crate) struct LocalNode {
 }
 
 impl Node for LocalNode {
+    // TODO: this must be the address of the node in the network, not just a reference to itself.
     type Address = Rc<LocalNode>;
 
     fn get_identifier(&self) -> &Identifier {

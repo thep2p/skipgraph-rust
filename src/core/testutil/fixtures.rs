@@ -485,6 +485,7 @@ pub fn new_local_skip_graph(n: usize) -> anyhow::Result<(Vec<LocalNode>, Arc<Mut
         let node = LocalNode::new(id, mem_vec, lt, network.clone());
         
         // Register the node as a message processor for its network
+        // TODO: a node registering itself as processor to network must be done internally in the node 
         let node_processor = Arc::new(Mutex::new(node.clone()));
         network
             .lock()
@@ -496,6 +497,7 @@ pub fn new_local_skip_graph(n: usize) -> anyhow::Result<(Vec<LocalNode>, Arc<Mut
     
     // Now perform the join operations to build the skip graph structure
     if !nodes.is_empty() {
+        // TODO: consider using a random node each time as the introducer
         // The first node is already in the skip graph (it's the introducer)
         for i in 1..nodes.len() {
             let introducer = nodes[0].clone();
