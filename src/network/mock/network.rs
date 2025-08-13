@@ -1,7 +1,7 @@
-use crate::network::mock::hub::NetworkHub;
 use crate::network::{Message, MessageProcessor, Network};
 use anyhow::Context;
 use std::sync::{Arc, Mutex};
+use crate::network::mock::hub::NetworkHub;
 
 /// MockNetwork is a mock implementation of the Network trait for testing purposes.
 /// It does not perform any real network operations but simulates message routing and processing through a `NetworkHub`.
