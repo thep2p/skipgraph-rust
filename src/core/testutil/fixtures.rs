@@ -482,7 +482,7 @@ pub fn create_skip_graph_with_mock_network(n: usize) -> anyhow::Result<(Vec<Loca
         let network = NetworkHub::new_mock_network(hub.clone(), id)?;
         
         // Create the LocalNode with network capability
-        let node = LocalNode::new_with_network(id, mem_vec, lt, network.clone());
+        let node = LocalNode::new(id, mem_vec, lt, network.clone());
         
         // Register the node as a message processor for its network
         let node_processor = Arc::new(Mutex::new(node.clone()));
