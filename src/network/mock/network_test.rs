@@ -61,7 +61,8 @@ fn test_mock_message_processor() {
     }
     {
         let hub_guard = hub.lock().unwrap();
-        assert!(hub_guard.route_message(message).is_ok());
+        let origin_id = random_identifier(); // Simulated sender
+        assert!(hub_guard.route_message(message, origin_id).is_ok());
     }
     {
         let proc_guard = processor.lock().unwrap();

@@ -8,14 +8,16 @@ use crate::network::mock::hub::NetworkHub;
 #[derive(Debug)]
 pub struct MockNetwork {
     hub: Arc<Mutex<NetworkHub>>,
+    node_id: crate::core::Identifier,
     processor: Option<Box<Arc<Mutex<dyn MessageProcessor>>>>,
 }
 
 impl MockNetwork {
-    /// Creates a new instance of MockNetwork with the given NetworkHub.
-    pub fn new(hub: Arc<Mutex<NetworkHub>>) -> Self {
+    /// Creates a new instance of MockNetwork with the given NetworkHub and node identifier.
+    pub fn new(hub: Arc<Mutex<NetworkHub>>, node_id: crate::core::Identifier) -> Self {
         MockNetwork {
             hub,
+            node_id,
             processor: None,
         }
     }
@@ -23,17 +25,19 @@ impl MockNetwork {
     /// This is the event handler for processing incoming messages come through the mock network.
     /// Arguments:
     /// * `message`: The incoming message to be processed.
+    /// * `origin_id`: The identifier of the node that sent the message.
     ///   Returns:
     /// * `Result<(), anyhow::Error>`: Returns Ok if the message was processed successfully, or an error if processing failed.
     pub fn incoming_message(
         &self,
         message: Message,
+        origin_id: crate::core::Identifier,
     ) -> anyhow::Result<()> {
         if let Some(ref processor) = self.processor {
             processor
                 .lock()
                 .map_err(|_| anyhow::anyhow!("Failed to acquire lock on message processor"))?
-                .process_incoming_message(message)
+                .process_incoming_message(message, origin_id)
                 .context("Failed to process incoming message")?;
             Ok(())
         } else {
@@ -48,7 +52,7 @@ impl Network for MockNetwork {
         self.hub
             .lock()
             .map_err(|_| anyhow::anyhow!("Failed to acquire lock on network hub"))?
-            .route_message(message)
+            .route_message(message, self.node_id)
             .context("Failed to route message")?;
         Ok(())
     }

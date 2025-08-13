@@ -38,13 +38,13 @@ impl NetworkHub {
                 identifier
             ));
         }
-        let mock_network = Arc::new(Mutex::new(MockNetwork::new(hub.clone())));
+        let mock_network = Arc::new(Mutex::new(MockNetwork::new(hub.clone(), identifier)));
         inner_networks.insert(identifier, mock_network.clone());
         Ok(mock_network)
     }
 
     /// Routes a message to the appropriate mock network based on the target node identifier.
-    pub fn route_message(&self, message: Message) -> anyhow::Result<()> {
+    pub fn route_message(&self, message: Message, origin_id: Identifier) -> anyhow::Result<()> {
         let inner_networks = self
             .networks
             .read()
@@ -54,7 +54,7 @@ impl NetworkHub {
                 .lock()
                 .map_err(|_| anyhow!("Failed to acquire lock on network"))?;
             network_guard
-                .incoming_message(message)
+                .incoming_message(message, origin_id)
                 .context("Failed to send message through network")?;
             Ok(())
         } else {
