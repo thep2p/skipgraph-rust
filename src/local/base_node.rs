@@ -188,6 +188,7 @@ impl LocalNode {
 
     /// Create a new `LocalNode` with the provided identifier, membership vector,
     /// lookup table, and network connection.
+    #[allow(dead_code)]
     pub(crate) fn new_with_network(
         id: Identifier,
         mem_vec: MembershipVector,
@@ -199,6 +200,7 @@ impl LocalNode {
 
     /// Sets the network for this LocalNode. This is useful for connecting the node
     /// to the network after creation.
+    #[allow(dead_code)]
     pub(crate) fn set_network(&mut self, network: Arc<Mutex<dyn Network>>) {
         self.network = Some(network);
     }
