@@ -203,7 +203,7 @@ impl LocalNode {
 
 impl MessageProcessor for LocalNode {
     /// Process incoming network messages for skip graph operations
-    fn process_incoming_message(&mut self, message: Message, origin_id: Identifier) -> anyhow::Result<()> {
+    fn process_incoming_message(&mut self, origin_id: Identifier, message: Message) -> anyhow::Result<()> {
         match message.payload {
             Payload::SearchRequest(search_req) => {
                 // Process the search request using the local node's search capability

@@ -23,7 +23,7 @@ impl MockMessageProcessor {
 }
 
 impl MessageProcessor for MockMessageProcessor {
-    fn process_incoming_message(&mut self, message: Message, _origin_id: crate::core::Identifier) -> anyhow::Result<()> {
+    fn process_incoming_message(&mut self, _origin_id: crate::core::Identifier, message: Message) -> anyhow::Result<()> {
         match message.payload {
             Payload::TestMessage(content) => {
                 self.seen.insert(content);

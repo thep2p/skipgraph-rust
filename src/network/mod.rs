@@ -28,7 +28,7 @@ pub struct Message {
 
 /// MessageProcessor trait defines the entity that processes the incoming network messages at this node.
 pub trait MessageProcessor: Send + std::fmt::Debug {
-    fn process_incoming_message(&mut self, message: Message, origin_id: Identifier) -> anyhow::Result<()>;
+    fn process_incoming_message(&mut self, origin_id: Identifier, message: Message) -> anyhow::Result<()>;
 }
 
 /// Network trait defines the interface for a network service that can send and receive messages.

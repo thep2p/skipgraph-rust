@@ -37,7 +37,7 @@ impl MockNetwork {
             processor
                 .lock()
                 .map_err(|_| anyhow::anyhow!("Failed to acquire lock on message processor"))?
-                .process_incoming_message(message, origin_id)
+                .process_incoming_message(origin_id, message)
                 .context("Failed to process incoming message")?;
             Ok(())
         } else {
