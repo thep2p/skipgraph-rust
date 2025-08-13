@@ -21,8 +21,13 @@ impl NetworkHub {
     }
 
     /// Creates a new mock network with the given identifier and registers it in the hub.
-    pub fn new_mock_network(hub: Arc<Mutex<Self>>, identifier: Identifier) -> anyhow::Result<Arc<Mutex<MockNetwork>>> {
-        let inner_hub = hub.lock().map_err(|_| anyhow!("Failed to acquire lock on hub"))?;
+    pub fn new_mock_network(
+        hub: Arc<Mutex<Self>>,
+        identifier: Identifier,
+    ) -> anyhow::Result<Arc<Mutex<MockNetwork>>> {
+        let inner_hub = hub
+            .lock()
+            .map_err(|_| anyhow!("Failed to acquire lock on hub"))?;
         let mut inner_networks = inner_hub
             .networks
             .write()
