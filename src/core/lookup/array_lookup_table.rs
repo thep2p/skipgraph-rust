@@ -185,7 +185,7 @@ impl LookupTable for ArrayLookupTable {
             "Get entry at level {} in direction {:?}: {:?}",
             level,
             direction,
-            entry.clone()
+            entry
         );
 
         Ok(entry)

@@ -127,7 +127,7 @@ impl MembershipVector {
             return (
                 hex::encode(left_prefix),
                 format!("{:08b}", self.0[prefix_byte_index]),
-                "".to_string(),
+                String::new(),
             );
         }
 
@@ -196,12 +196,12 @@ mod test {
     #[test]
     fn test_membership_vector_from_string() {
         // 32 bytes of zeros
-        let s = hex::encode(vec![0; model::IDENTIFIER_SIZE_BYTES]).to_string();
+        let s = hex::encode(vec![0; model::IDENTIFIER_SIZE_BYTES]);
         let mv = MembershipVector::from_string(&s).unwrap();
         assert_eq!(mv.to_bytes(), vec![0; model::IDENTIFIER_SIZE_BYTES]);
 
         // 32 bytes of ones
-        let s = hex::encode(vec![255u8; model::IDENTIFIER_SIZE_BYTES]).to_string();
+        let s = hex::encode(vec![255u8; model::IDENTIFIER_SIZE_BYTES]);
         let mv = MembershipVector::from_string(&s).unwrap();
         assert_eq!(mv.to_bytes(), vec![255u8; model::IDENTIFIER_SIZE_BYTES]);
 
@@ -436,9 +436,9 @@ mod test {
         pivot_index: usize,
         (left, pivot, right): (String, String, String),
     ) {
-        let expected_left = hex::encode(&mv.to_bytes()[0..pivot_index / 8]).to_string();
+        let expected_left = hex::encode(&mv.to_bytes()[0..pivot_index / 8]);
         let expected_pivot = format!("{:08b}", mv.to_bytes()[pivot_index / 8]);
-        let expected_right = hex::encode(&mv.to_bytes()[pivot_index / 8 + 1..]).to_string();
+        let expected_right = hex::encode(&mv.to_bytes()[pivot_index / 8 + 1..]);
 
         assert_eq!(left, expected_left, "p: {pivot_index}");
         assert_eq!(pivot, expected_pivot, "p: {pivot_index}");
