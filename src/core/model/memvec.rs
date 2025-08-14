@@ -64,11 +64,6 @@ impl MembershipVector {
         &self.0
     }
 
-    /// Returns a reference to the underlying byte array.
-    pub fn as_bytes(&self) -> &[u8] {
-        &self.0
-    }
-
     /// Converts the MembershipVector into a byte slice.
     ///
     /// # Returns
