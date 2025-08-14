@@ -661,4 +661,41 @@ mod tests {
         assert_eq!(lt2.get_entry(2, Direction::Left).unwrap(), Some(id3.clone()));
         assert_eq!(lt3.get_entry(2, Direction::Left).unwrap(), Some(id3.clone()));
     }
+
+    /// Tests that cloning via trait objects (Box<dyn LookupTable>) also creates shallow copies.
+    /// This ensures the clone_box method provides the same shallow cloning behavior.
+    #[test]
+    fn test_trait_object_shallow_clone() {
+        let lt1: Box<dyn LookupTable> = Box::new(ArrayLookupTable::new(&span_fixture()));
+        let id1 = random_identity();
+        
+        // Update the original lookup table
+        lt1.update_entry(id1.clone(), 0, Direction::Left).unwrap();
+        
+        // Clone via trait object
+        let lt2 = lt1.clone();
+        
+        // Verify the cloned lookup table sees the same data
+        assert_eq!(lt2.get_entry(0, Direction::Left).unwrap(), Some(id1.clone()));
+        
+        // Update through the cloned lookup table
+        let id2 = random_identity();
+        lt2.update_entry(id2.clone(), 1, Direction::Right).unwrap();
+        
+        // Verify the original lookup table sees the change made through the clone
+        assert_eq!(lt1.get_entry(1, Direction::Right).unwrap(), Some(id2.clone()));
+        
+        // Both trait objects should be equal since they share the same underlying data
+        assert!(lt1.equal(&*lt2));
+        
+        // Test multiple levels of cloning
+        let lt3 = lt2.clone();
+        let id3 = random_identity();
+        lt3.update_entry(id3.clone(), 2, Direction::Left).unwrap();
+        
+        // All instances should see the new change
+        assert_eq!(lt1.get_entry(2, Direction::Left).unwrap(), Some(id3.clone()));
+        assert_eq!(lt2.get_entry(2, Direction::Left).unwrap(), Some(id3.clone()));
+        assert_eq!(lt3.get_entry(2, Direction::Left).unwrap(), Some(id3.clone()));
+    }
 }
