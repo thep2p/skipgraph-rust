@@ -185,14 +185,11 @@ impl LookupTable for ArrayLookupTable {
     /// Returns true if the entries are equal, false otherwise.
     fn equal(&self, other: &dyn LookupTable) -> bool {
         // iterates over the levels and compares the entries in the left and right directions
-        let inner = match self.inner.read() {
-            Ok(guard) => guard,
-            Err(poisoned) => {
-                // If the lock is poisoned, recover the data to prevent cascade failure
-                // This is safe because we're only reading for comparison
-                poisoned.into_inner()
-            }
-        };
+        let inner = self.inner.read().unwrap_or_else(|poisoned| {
+            // If the lock is poisoned, recover the data to prevent cascade failure
+            // This is safe because we're only reading for comparison
+            poisoned.into_inner()
+        });
         for l in 0..model::IDENTIFIER_SIZE_BYTES {
             // Check if the left entry is equal
             if let Ok(other_entry) = other.get_entry(l, Direction::Left) {
