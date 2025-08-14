@@ -48,11 +48,20 @@ impl MembershipVector {
 
     /// Converts the input string into a bit string.
     pub fn to_bit_string(&self) -> String {
-        self.0
-            .iter()
-            .map(|&b| format!("{b:08b}"))
-            .collect::<Vec<_>>()
-            .join(" ")
+        use std::fmt::Write;
+        let mut result = String::with_capacity(self.0.len() * 9); // 8 bits + 1 space per byte
+        for (i, &b) in self.0.iter().enumerate() {
+            if i > 0 {
+                result.push(' ');
+            }
+            write!(result, "{b:08b}").expect("Writing to String should never fail");
+        }
+        result
+    }
+
+    /// Returns a reference to the underlying byte array.
+    pub fn as_bytes(&self) -> &[u8] {
+        &self.0
     }
 
     /// Returns a reference to the underlying byte array.
