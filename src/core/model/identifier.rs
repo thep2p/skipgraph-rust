@@ -21,7 +21,7 @@ pub const MAX: Identifier = Identifier([255u8; IDENTIFIER_SIZE_BYTES]);
 /// - CompareGreater: the left identifier is greater than the right identifier.
 /// - CompareEqual: the two identifiers are equal.
 /// - CompareLess: the left identifier is less than the right identifier.
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Clone, Copy)]
 pub enum ComparisonResult {
     CompareGreater,
     CompareEqual,
@@ -41,7 +41,7 @@ pub struct ComparisonContext {
 impl ComparisonContext {
     /// Returns the result of the comparison.
     pub fn result(&self) -> ComparisonResult {
-        self.result.clone()
+        self.result
     }
 
     /// Returns the left identifier.
