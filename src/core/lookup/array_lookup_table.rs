@@ -198,7 +198,11 @@ impl LookupTable for ArrayLookupTable {
         // iterates over the levels and compares the entries in the left and right directions
         let inner = match self.inner.read() {
             Ok(guard) => guard,
-            Err(err) => panic!("Failed to acquire read lock on the lookup table: {err}"),
+            Err(poisoned) => {
+                // If the lock is poisoned, recover the data to prevent cascade failure
+                // This is safe because we're only reading for comparison
+                poisoned.into_inner()
+            }
         };
         for l in 0..model::IDENTIFIER_SIZE_BYTES {
             // Check if the left entry is equal
