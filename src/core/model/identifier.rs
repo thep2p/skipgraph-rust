@@ -143,6 +143,12 @@ impl Identifier {
     }
 
     /// Converts the Identifier into a byte slice.
+    pub fn as_bytes(&self) -> &[u8] {
+        &self.0
+    }
+
+    /// Converts the Identifier into a owned byte vector.
+    /// Consider using `as_bytes()` if you don't need ownership.
     pub fn to_bytes(&self) -> Vec<u8> {
         self.0.to_vec()
     }

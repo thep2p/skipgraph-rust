@@ -55,11 +55,18 @@ impl MembershipVector {
             .join(" ")
     }
 
+    /// Returns a reference to the underlying byte array.
+    pub fn as_bytes(&self) -> &[u8] {
+        &self.0
+    }
+
     /// Converts the MembershipVector into a byte slice.
     ///
     /// # Returns
     ///
     /// * `Vec<u8>` - A vector containing the bytes of the MembershipVector.
+    /// 
+    /// Consider using `as_bytes()` if you don't need ownership.
     pub fn to_bytes(&self) -> Vec<u8> {
         self.0.to_vec()
     }
