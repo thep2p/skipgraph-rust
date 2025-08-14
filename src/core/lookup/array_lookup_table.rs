@@ -41,11 +41,14 @@ impl ArrayLookupTable {
 impl Clone for ArrayLookupTable {
     fn clone(&self) -> Self {
         // Create a new instance of ArrayLookupTable with the same data
-        let inner = self.inner.read().unwrap_or_else(|poisoned| {
-            // If the lock is poisoned, we can still access the data
-            // This is safe because we're only reading and cloning
-            poisoned.into_inner()
-        });
+        let inner = match self.inner.read() {
+            Ok(guard) => guard,
+            Err(poisoned) => {
+                // If the lock is poisoned, recover the data to prevent cascade failure
+                // This is safe because we're only reading and cloning
+                poisoned.into_inner()
+            }
+        };
         ArrayLookupTable {
             inner: RwLock::new(InnerArrayLookupTable {
                 left: inner.left.clone(),
@@ -549,7 +552,7 @@ mod tests {
                     // println!("Thread {}: op: {}, level: {}, direction: {:?}", t_id, op, level, direction);
                     match op {
                         0 => {
-                            let (table, last_writes) = &mut *shared_ref.lock().unwrap();
+                            let (table, last_writes) = &mut *shared_ref.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
                             let read_val_opt = table.get_entry(level, direction).unwrap();
 
                             let last_write_opt = last_writes.get(&(level, direction)).cloned();
@@ -577,7 +580,7 @@ mod tests {
                         }
                         1 => {
                             // write
-                            let (table, last_writes) = &mut *shared_ref.lock().unwrap();
+                            let (table, last_writes) = &mut *shared_ref.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
 
                             let id = random_identity();
                             if table.update_entry(id.clone(), level, direction).is_ok() {
@@ -587,7 +590,7 @@ mod tests {
                         }
                         2 => {
                             // remove atomically
-                            let (table, last_writes) = &mut *shared_ref.lock().unwrap();
+                            let (table, last_writes) = &mut *shared_ref.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
                             if table.remove_entry(level, direction).is_ok() {
                                 // Remove the last written entry
                                 last_writes.remove(&(level, direction));
