@@ -4,7 +4,7 @@ use crate::core::model::direction::Direction;
 use crate::core::model::identity::Identity;
 use anyhow::anyhow;
 use std::fmt::{Debug, Formatter};
-use std::sync::RwLock;
+use std::sync::{Arc, RwLock};
 use tracing::{Level, Span};
 
 /// The number of levels in the lookup table is determined by the size of the identifier in bits (that is
@@ -12,9 +12,9 @@ use tracing::{Level, Span};
 pub const LOOKUP_TABLE_LEVELS: usize = model::IDENTIFIER_SIZE_BYTES * 8;
 
 /// It is a 2D array of Identity, where the first dimension is the level and the second dimension is the direction.
-/// Caution: lookup table by itself is not thread-safe, should be used with an Arc<Mutex<LookupTable>>.
+/// Uses Arc for shallow cloning - cloned instances share the same underlying data.
 pub struct ArrayLookupTable {
-    inner: RwLock<InnerArrayLookupTable>,
+    inner: Arc<RwLock<InnerArrayLookupTable>>,
     span: Span,
 }
 
@@ -29,10 +29,10 @@ impl ArrayLookupTable {
         let span = tracing::span!(parent: parent_span, Level::INFO, "array_lookup_table");
 
         ArrayLookupTable {
-            inner: RwLock::new(InnerArrayLookupTable {
+            inner: Arc::new(RwLock::new(InnerArrayLookupTable {
                 left: vec![None; LOOKUP_TABLE_LEVELS],
                 right: vec![None; LOOKUP_TABLE_LEVELS],
-            }),
+            })),
             span,
         }
     }
@@ -40,20 +40,9 @@ impl ArrayLookupTable {
 
 impl Clone for ArrayLookupTable {
     fn clone(&self) -> Self {
-        // Create a new instance of ArrayLookupTable with the same data
-        let inner = match self.inner.read() {
-            Ok(guard) => guard,
-            Err(poisoned) => {
-                // If the lock is poisoned, recover the data to prevent cascade failure
-                // This is safe because we're only reading and cloning
-                poisoned.into_inner()
-            }
-        };
+        // Shallow clone: cloned instances share the same underlying data via Arc
         ArrayLookupTable {
-            inner: RwLock::new(InnerArrayLookupTable {
-                left: inner.left.clone(),
-                right: inner.right.clone(),
-            }),
+            inner: Arc::clone(&self.inner),
             span: self.span.clone(),
         }
     }
@@ -634,5 +623,42 @@ mod tests {
                 Some(identity.clone())
             );
         }
+    }
+
+    /// Tests that cloning ArrayLookupTable creates a shallow copy.
+    /// Changes made to one instance should be visible in the cloned instance.
+    #[test]
+    fn test_shallow_clone() {
+        let lt1 = ArrayLookupTable::new(&span_fixture());
+        let id1 = random_identity();
+        
+        // Update the original lookup table
+        lt1.update_entry(id1.clone(), 0, Direction::Left).unwrap();
+        
+        // Clone the lookup table
+        let lt2 = lt1.clone();
+        
+        // Verify the cloned lookup table sees the same data
+        assert_eq!(lt2.get_entry(0, Direction::Left).unwrap(), Some(id1.clone()));
+        
+        // Update through the cloned lookup table
+        let id2 = random_identity();
+        lt2.update_entry(id2.clone(), 1, Direction::Right).unwrap();
+        
+        // Verify the original lookup table sees the change made through the clone
+        assert_eq!(lt1.get_entry(1, Direction::Right).unwrap(), Some(id2.clone()));
+        
+        // Both instances should be equal since they share the same underlying data
+        assert_eq!(lt1, lt2);
+        
+        // Verify multiple clones all share the same data
+        let lt3 = lt2.clone();
+        let id3 = random_identity();
+        lt3.update_entry(id3.clone(), 2, Direction::Left).unwrap();
+        
+        // All instances should see the new change
+        assert_eq!(lt1.get_entry(2, Direction::Left).unwrap(), Some(id3.clone()));
+        assert_eq!(lt2.get_entry(2, Direction::Left).unwrap(), Some(id3.clone()));
+        assert_eq!(lt3.get_entry(2, Direction::Left).unwrap(), Some(id3.clone()));
     }
 }
