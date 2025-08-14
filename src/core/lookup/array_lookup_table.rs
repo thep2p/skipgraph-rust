@@ -41,7 +41,11 @@ impl ArrayLookupTable {
 impl Clone for ArrayLookupTable {
     fn clone(&self) -> Self {
         // Create a new instance of ArrayLookupTable with the same data
-        let inner = self.inner.read().unwrap();
+        let inner = self.inner.read().unwrap_or_else(|poisoned| {
+            // If the lock is poisoned, we can still access the data
+            // This is safe because we're only reading and cloning
+            poisoned.into_inner()
+        });
         ArrayLookupTable {
             inner: RwLock::new(InnerArrayLookupTable {
                 left: inner.left.clone(),
