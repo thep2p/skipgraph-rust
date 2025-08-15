@@ -6,6 +6,7 @@ use crate::core::{
 use std::fmt;
 use std::fmt::Formatter;
 
+// TODO: Remove #[allow(dead_code)] once LocalNode is used in production code. See issue #123 for tracking.
 #[allow(dead_code)]
 /// LocalNode is a struct that represents a single node in the local implementation of the skip graph.
 pub(crate) struct LocalNode {
