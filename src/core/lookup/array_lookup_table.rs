@@ -190,7 +190,7 @@ impl LookupTable for ArrayLookupTable {
             // This is safe because we're only reading for comparison
             poisoned.into_inner()
         });
-        for l in 0..model::IDENTIFIER_SIZE_BYTES {
+        for l in 0..LOOKUP_TABLE_LEVELS {
             // Check if the left entry is equal
             if let Ok(other_entry) = other.get_entry(l, Direction::Left) {
                 if inner.left[l].as_ref() != other_entry.as_ref() {
