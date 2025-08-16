@@ -628,12 +628,12 @@ mod tests {
     fn test_shallow_clone() {
         let lt1 = ArrayLookupTable::new(&span_fixture());
         let id1 = random_identity();
+
+        // Clone the lookup table
+        let lt2 = lt1.clone();
         
         // Update the original lookup table
         lt1.update_entry(id1.clone(), 0, Direction::Left).unwrap();
-        
-        // Clone the lookup table
-        let lt2 = lt1.clone();
         
         // Verify the cloned lookup table sees the same data
         assert_eq!(lt2.get_entry(0, Direction::Left).unwrap(), Some(id1.clone()));
@@ -665,12 +665,12 @@ mod tests {
     fn test_trait_object_shallow_clone() {
         let lt1: Box<dyn LookupTable> = Box::new(ArrayLookupTable::new(&span_fixture()));
         let id1 = random_identity();
+
+        // Clone via trait object
+        let lt2 = lt1.clone();
         
         // Update the original lookup table
         lt1.update_entry(id1.clone(), 0, Direction::Left).unwrap();
-        
-        // Clone via trait object
-        let lt2 = lt1.clone();
         
         // Verify the cloned lookup table sees the same data
         assert_eq!(lt2.get_entry(0, Direction::Left).unwrap(), Some(id1.clone()));
