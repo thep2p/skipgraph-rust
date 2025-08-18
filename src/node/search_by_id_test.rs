@@ -1,7 +1,8 @@
 use super::base_node::LocalNode;
 use crate::core::model::direction::Direction;
 use crate::core::testutil::fixtures::{random_membership_vector, span_fixture};
-use crate::core::{ArrayLookupTable, Identifier, IdentifierSearchRequest, Node};
+use crate::core::{ArrayLookupTable, Identifier, IdentifierSearchRequest};
+use crate::node::Node;
 
 // TODO: move other tests from base_node.rs here
 /// Tests fallback behavior of `search_by_id` when no neighbors exist.

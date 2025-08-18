@@ -1,8 +1,8 @@
 use crate::core::model::direction::Direction;
 use crate::core::{
     Identifier, IdentifierSearchRequest, IdentifierSearchResult, LookupTable, MembershipVector,
-    Node,
 };
+use crate::node::Node;
 use std::fmt;
 use std::fmt::Formatter;
 
