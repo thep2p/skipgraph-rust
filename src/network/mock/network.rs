@@ -7,7 +7,7 @@ use std::sync::{Arc, Mutex};
 /// It does not perform any real network operations but simulates message routing and processing through a `NetworkHub`.
 pub struct MockNetwork {
     hub: Arc<Mutex<NetworkHub>>,
-    processor: Option<Box<Arc<Mutex<dyn MessageProcessor>>>>,
+    processor: Arc<Option<Box<dyn MessageProcessor>>>,
 }
 
 impl MockNetwork {
@@ -15,7 +15,7 @@ impl MockNetwork {
     pub fn new(hub: Arc<Mutex<NetworkHub>>) -> Self {
         MockNetwork {
             hub,
-            processor: None,
+            processor: Arc::new(None),
         }
     }
 
