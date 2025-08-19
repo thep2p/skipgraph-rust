@@ -1,4 +1,4 @@
-use crate::core::lookup::lookup_table::LookupTableLevel;
+use crate::core::lookup::LookupTableLevel;
 use crate::core::model::direction::Direction;
 use crate::core::Identifier;
 
