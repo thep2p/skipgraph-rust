@@ -1,7 +1,9 @@
 use crate::core::model::direction::Direction;
 use crate::core::model::identity::Identity;
 
-pub(crate) mod array_lookup_table;
+
+pub mod array_lookup_table;
+mod array_lookup_table_test;
 
 /// LookupTableLevel represents level of a lookup table. entry in the table.
 pub type LookupTableLevel = usize;
