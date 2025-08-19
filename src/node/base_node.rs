@@ -6,9 +6,9 @@ use crate::node::Node;
 use std::fmt;
 use std::fmt::Formatter;
 
-// TODO: Remove #[allow(dead_code)] once LocalNode is used in production code. See issue #123 for tracking.
+// TODO: Remove #[allow(dead_code)] once BaseNode is used in production code.
 #[allow(dead_code)]
-/// LocalNode is a struct that represents a single node in the local implementation of the skip graph.
+/// BaseNode is a struct that represents a single node in the implementation of the skip graph.
 pub(crate) struct BaseNode {
     id: Identifier,
     mem_vec: MembershipVector,
@@ -139,7 +139,7 @@ impl Node for BaseNode {
 }
 
 impl BaseNode {
-    /// Create a new `LocalNode` with the provided identifier, membership vector
+    /// Create a new `BaseNode` with the provided identifier, membership vector
     /// and lookup table.
     #[cfg(test)]
     pub(crate) fn new(id: Identifier, mem_vec: MembershipVector, lt: Box<dyn LookupTable>) -> Self {
@@ -147,8 +147,8 @@ impl BaseNode {
     }
 }
 
-/// Implementing PartialEq for LocalNode to compare the id and membership vector.
-/// This basically supports == operator for LocalNode.
+/// Implementing PartialEq for BaseNode to compare the id and membership vector.
+/// This basically supports == operator for BaseNode.
 /// The cardinal assumption is that the id and membership vector are unique for each node.
 impl PartialEq for BaseNode {
     fn eq(&self, other: &Self) -> bool {
@@ -159,7 +159,7 @@ impl PartialEq for BaseNode {
 
 impl fmt::Debug for BaseNode {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        f.debug_struct("LocalNode")
+        f.debug_struct("BaseNode")
             .field("id", &self.id)
             .field("mem_vec", &self.mem_vec)
             .finish()
@@ -187,7 +187,7 @@ mod tests {
     use crate::core::ArrayLookupTable;
 
     #[test]
-    fn test_local_node() {
+    fn test_base_node() {
         let id = random_identifier();
         let mem_vec = random_membership_vector();
         let node = BaseNode {

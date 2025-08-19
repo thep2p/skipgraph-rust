@@ -138,14 +138,14 @@ fn test_search_by_id_found_right_direction() {
 /// 3. For each level:
 ///    - Populate the left neighbors of the lookup table with entries that all have identifiers
 ///      less than the target. This guarantees no potential matches in the left direction for the target.
-///    - Construct a `LocalNode` with the configured lookup table.
+///    - Construct a `BaseNode` with the configured lookup table.
 ///    - Create a search request aimed at the left direction.
 ///    - Invoke the `search_by_id` method using the request.
 ///    - Assert that the result matches the node's own identifier, as no better match is expected.
 ///
 /// Test Assertions:
 /// - The resulting level of the search result should be `0`, indicating the search exhausted all levels.
-/// - The resulting identifier should match the local node's identifier.
+/// - The resulting identifier should match the base node's identifier.
 #[test]
 fn test_search_by_id_not_found_left_direction() {
     let target = random_identifier();
@@ -194,14 +194,14 @@ fn test_search_by_id_not_found_left_direction() {
 /// 3. For each level:
 ///    - Populate the right neighbors of the lookup table with entries that all have identifiers
 ///      less than the target. This guarantees no potential matches in the right direction for the target.
-///    - Construct a `LocalNode` with the configured lookup table.
+///    - Construct a `BaseNode` with the configured lookup table.
 ///    - Create a search request aimed at the right direction.
 ///    - Invoke the `search_by_id` method using the request.
 ///    - Assert that the result matches the node's own identifier, as no better match is expected.
 ///
 /// Test Assertions:
 /// - The resulting level of the search result should be `0`, indicating the search exhausted all levels.
-/// - The resulting identifier should match the local node's identifier.
+/// - The resulting identifier should match the base node's identifier.
 #[test]
 fn test_search_by_id_not_found_right_direction() {
     let target = random_identifier();
@@ -237,16 +237,16 @@ fn test_search_by_id_not_found_right_direction() {
     }
 }
 
-/// Tests the `search_by_id` function of the `LocalNode` struct to verify that it properly returns the exact result
+/// Tests the `search_by_id` function of the `BaseNode` struct to verify that it properly returns the exact result
 /// when the target identifier exists in the lookup table at the specified level.
 ///
 /// The test performs the following steps:
 /// 1. Creates a random lookup table with a predefined number of levels (`LOOKUP_TABLE_LEVELS`) using helper functions.
-/// 2. Constructs a `LocalNode` instance with a random identifier, membership vector, and the generated lookup table.
+/// 2. Constructs a `BaseNode` instance with a random identifier, membership vector, and the generated lookup table.
 /// 3. Iterates through each level of the lookup table (`LOOKUP_TABLE_LEVELS`) and both `Direction::Left` and `Direction::Right`.
 /// 4. For each level and direction, fetches the expected target identity from the lookup table and constructs an
 ///    `IdentifierSearchRequest` with the target `id`, level, and direction.
-/// 5. Calls `search_by_id` on the `LocalNode` instance with the constructed request.
+/// 5. Calls `search_by_id` on the `BaseNode` instance with the constructed request.
 /// 6. Verifies that the returned result's level matches the expected level and the node identifier matches the target identifier.
 ///
 /// This test ensures that the `search_by_id` function works correctly in cases where the exact target identifier is found.
@@ -271,11 +271,11 @@ fn test_search_by_id_exact_result() {
     }
 }
 
-/// Tests the `search_by_id` method of a `LocalNode` under concurrent conditions where multiple
+/// Tests the `search_by_id` method of a `BaseNode` under concurrent conditions where multiple
 /// threads perform searches in the left direction (`Direction::Left`) simultaneously.
 ///
 /// The test:
-/// - Creates a `LocalNode` with a random identifier, random membership vector,
+/// - Creates a `BaseNode` with a random identifier, random membership vector,
 ///   and a lookup table (`RandomLookupTable`).
 /// - Randomly generates a target identifier to search for.
 /// - Spawns 20 threads that conduct searches concurrently from the node.
@@ -285,7 +285,7 @@ fn test_search_by_id_exact_result() {
 /// - The expected search result is derived by finding the closest matching identifier from the
 ///   left neighbors in the lookup table (`lt`) that meets the search criteria (e.g., level,
 ///   target identifier comparison).
-/// - If no valid neighbor is found, it expects the result to default to the `LocalNode`'s own identifier.
+/// - If no valid neighbor is found, it expects the result to default to the `BaseNode`'s own identifier.
 ///
 /// ### Assertions:
 /// - If a valid neighbor exists, the search output should match both the level and identifier.
@@ -348,11 +348,11 @@ fn test_search_by_id_concurrent_found_left_direction() {
     join_all_with_timeout(handles.into_boxed_slice(), timeout).unwrap();
 }
 
-/// Tests the `search_by_id` method of a `LocalNode` under concurrent conditions where multiple
+/// Tests the `search_by_id` method of a `BaseNode` under concurrent conditions where multiple
 /// threads perform searches in the right direction (`Direction::Right`) simultaneously.
 ///
 /// The test:
-/// - Creates a `LocalNode` with a random identifier, random membership vector,
+/// - Creates a `BaseNode` with a random identifier, random membership vector,
 ///   and a lookup table (`RandomLookupTable`).
 /// - Randomly generates a target identifier to search for.
 /// - Spawns 20 threads that conduct searches concurrently from the node.
@@ -362,7 +362,7 @@ fn test_search_by_id_concurrent_found_left_direction() {
 /// - The expected search result is derived by finding the closest matching identifier from the
 ///   right neighbors in the lookup table (`lt`) that meets the search criteria (e.g., level,
 ///   target identifier comparison).
-/// - If no valid neighbor is found, it expects the result to default to the `LocalNode`'s own identifier.
+/// - If no valid neighbor is found, it expects the result to default to the `BaseNode`'s own identifier.
 ///
 /// ### Assertions:
 /// - If a valid neighbor exists, the search output should match both the level and identifier.
@@ -475,7 +475,7 @@ fn test_search_by_id_error_propagation() {
         }
     }
 
-    // Create a local node with the mock error lookup table
+    // Create a base node with the mock error lookup table
     let node = BaseNode::new(random_identifier(), random_membership_vector(), Box::new(MockErrorLookupTable));
 
     // Create a random search request (any search request will return an error as
