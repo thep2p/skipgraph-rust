@@ -36,7 +36,7 @@ pub trait Network: Send + Sync {
     /// At any point in time, there can be only one processor registered.
     /// Registering a new processor is illegal if there is already a processor registered, and causes an error.
     fn register_processor(
-        &mut self,
+        &self,
         processor: Box<dyn MessageProcessor>,
     ) -> anyhow::Result<()>;
 

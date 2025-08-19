@@ -45,7 +45,7 @@ impl Clone for MockNetwork {
     fn clone(&self) -> Self {
         MockNetwork {
             hub: Arc::clone(&self.hub),
-            processor: Mutex::new(None), // Each clone starts with no processor registered
+            processor: Arc::new(Mutex::new(None)), // Each clone starts with no processor registered
         }
     }
 }
@@ -62,7 +62,7 @@ impl Network for MockNetwork {
     /// Only one processor can be registered at a time.
     /// If a processor is already registered, an error is returned.
     fn register_processor(
-        &mut self,
+        &self,
         processor: Box<dyn MessageProcessor>,
     ) -> anyhow::Result<()> {
         let mut processor_guard = self.processor
