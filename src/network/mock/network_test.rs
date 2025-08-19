@@ -67,6 +67,7 @@ fn test_mock_message_processor() {
         let proc_guard = processor.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
         assert!(!proc_guard.has_seen("Hello, World!"));
     }
+    
     {
         let mut network_guard = mock_network.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
         let proc_guard = processor.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
@@ -74,10 +75,9 @@ fn test_mock_message_processor() {
             .register_processor(proc_guard.clone_box())
             .is_ok());
     }
-    {
-        let hub_guard = hub.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
-        assert!(hub_guard.route_message(message).is_ok());
-    }
+    
+    assert!(hub.route_message(message).is_ok());
+    
     {
         let proc_guard = processor.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
         assert!(proc_guard.has_seen("Hello, World!"));
@@ -112,10 +112,9 @@ fn test_hub_route_message() {
         let proc_guard = msg_proc_1.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
         assert!(!proc_guard.has_seen("Test message"));
     }
-    {
-        let net_guard = mock_net_2.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
-        assert!(net_guard.send_message(message).is_ok());
-    }
+    
+    assert!(mock_net_2.send_message(message).is_ok());
+    
     {
         let proc_guard = msg_proc_1.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
         assert!(proc_guard.has_seen("Test message"));
@@ -166,8 +165,7 @@ fn test_concurrent_message_sending() {
             barrier_clone.wait();
 
             // Send the message
-            let net_guard = mock_net_2_clone.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
-            net_guard.send_message(message).unwrap();
+            mock_net_2_clone.send_message(message).unwrap();
         });
 
         handles.push(handle);

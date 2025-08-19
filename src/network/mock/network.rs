@@ -5,14 +5,17 @@ use std::sync::{Arc, Mutex};
 
 /// MockNetwork is a mock implementation of the Network trait for testing purposes.
 /// It does not perform any real network operations but simulates message routing and processing through a `NetworkHub`.
+/// 
+/// Thread-safety is handled internally using Mutex for the processor, following a Go-like approach
+/// where the struct can be safely shared via Arc<MockNetwork> without external locking.
 pub struct MockNetwork {
-    hub: Arc<Mutex<NetworkHub>>,
+    hub: Arc<NetworkHub>,
     processor: Arc<Mutex<Option<Box<dyn MessageProcessor>>>>,
 }
 
 impl MockNetwork {
     /// Creates a new instance of MockNetwork with the given NetworkHub.
-    pub fn new(hub: Arc<Mutex<NetworkHub>>) -> Self {
+    pub fn new(hub: Arc<NetworkHub>) -> Self {
         MockNetwork {
             hub,
             processor: Arc::new(Mutex::new(None)),
@@ -42,7 +45,7 @@ impl Clone for MockNetwork {
     fn clone(&self) -> Self {
         MockNetwork {
             hub: Arc::clone(&self.hub),
-            processor: Arc::clone(&self.processor),
+            processor: Mutex::new(None), // Each clone starts with no processor registered
         }
     }
 }
@@ -51,8 +54,6 @@ impl Network for MockNetwork {
     /// Sends a message through the mock network by routing it through the NetworkHub.
     fn send_message(&self, message: Message) -> anyhow::Result<()> {
         self.hub
-            .lock()
-            .map_err(|_| anyhow::anyhow!("Failed to acquire lock on network hub"))?
             .route_message(message)
             .context("Failed to route message")
     }
