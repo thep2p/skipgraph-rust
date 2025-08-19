@@ -1,6 +1,5 @@
 mod lookup;
 pub mod model;
-mod search;
 #[cfg(test)]
 pub mod testutil;
 
