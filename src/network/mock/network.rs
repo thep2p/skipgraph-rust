@@ -36,6 +36,15 @@ impl MockNetwork {
     }
 }
 
+impl Clone for MockNetwork {
+    fn clone(&self) -> Self {
+        MockNetwork {
+            hub: Arc::clone(&self.hub),
+            processor: Arc::clone(&self.processor),
+        }
+    }
+}
+
 impl Network for MockNetwork {
     /// Sends a message through the mock network by routing it through the NetworkHub.
     fn send_message(&self, message: Message) -> anyhow::Result<()> {
@@ -60,5 +69,9 @@ impl Network for MockNetwork {
                 Ok(())
             }
         }
+    }
+
+    fn clone_box(&self) -> Box<dyn Network> {
+        Box::new(self.clone())   
     }
 }
