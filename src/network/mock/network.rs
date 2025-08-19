@@ -7,7 +7,7 @@ use std::sync::{Arc, Mutex};
 /// It does not perform any real network operations but simulates message routing and processing through a `NetworkHub`.
 pub struct MockNetwork {
     hub: Arc<Mutex<NetworkHub>>,
-    processor: Arc<Option<Box<dyn MessageProcessor>>>,
+    processor: Arc<Mutex<Option<Box<dyn MessageProcessor>>>>,
 }
 
 impl MockNetwork {
@@ -15,7 +15,7 @@ impl MockNetwork {
     pub fn new(hub: Arc<Mutex<NetworkHub>>) -> Self {
         MockNetwork {
             hub,
-            processor: Arc::new(None),
+            processor: Arc::new(Mutex::new(None)),
         }
     }
 
@@ -25,12 +25,14 @@ impl MockNetwork {
     ///   Returns:
     /// * `Result<(), anyhow::Error>`: Returns Ok if the message was processed successfully, or an error if processing failed.
     pub fn incoming_message(&self, message: Message) -> anyhow::Result<()> {
-        let processor = self.processor.as_ref()
+        let mut processor_guard = self.processor
+            .lock()
+            .map_err(|_| anyhow::anyhow!("Failed to acquire lock on processor container"))?;
+        
+        let processor = processor_guard.as_mut()
             .ok_or_else(|| anyhow::anyhow!("No message processor registered"))?;
         
         processor
-            .lock()
-            .map_err(|_| anyhow::anyhow!("Failed to acquire lock on message processor"))?
             .process_incoming_message(message)
             .context("Failed to process incoming message")
     }
@@ -60,12 +62,16 @@ impl Network for MockNetwork {
     /// If a processor is already registered, an error is returned.
     fn register_processor(
         &mut self,
-        processor: Box<Arc<Mutex<dyn MessageProcessor>>>,
+        processor: Box<dyn MessageProcessor>,
     ) -> anyhow::Result<()> {
-        match self.processor {
+        let mut processor_guard = self.processor
+            .lock()
+            .map_err(|_| anyhow::anyhow!("Failed to acquire lock on processor container"))?;
+        
+        match processor_guard.as_ref() {
             Some(_) => Err(anyhow::anyhow!("A message processor is already registered")),
             None => {
-                self.processor = Some(processor);
+                *processor_guard = Some(processor);
                 Ok(())
             }
         }
