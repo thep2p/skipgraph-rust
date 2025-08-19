@@ -16,12 +16,20 @@ pub struct Message {
 }
 
 /// MessageProcessor trait defines the entity that processes the incoming network messages at this node.
-pub trait MessageProcessor: Send {
+pub trait MessageProcessor: Send + Sync {
     fn process_incoming_message(&mut self, message: Message) -> anyhow::Result<()>;
+    
+    /// Creates a shallow copy of this message processor.
+    /// 
+    /// Implementations should ensure that cloned instances share the same underlying data
+    /// (e.g., using Arc for shared ownership). Changes made through one instance should be
+    /// visible in all cloned instances. This is the standard cloning behavior for all
+    /// MessageProcessor implementations.
+    fn clone_box(&self) -> Box<dyn MessageProcessor>;
 }
 
 /// Network trait defines the interface for a network service that can send and receive messages.
-pub trait Network {
+pub trait Network: Send + Sync {
     /// Sends a message to the network.
     fn send_message(&self, message: Message) -> anyhow::Result<()>;
 
@@ -32,4 +40,12 @@ pub trait Network {
         &mut self,
         processor: Box<Arc<Mutex<dyn MessageProcessor>>>,
     ) -> anyhow::Result<()>;
+
+    /// Creates a shallow copy of this networking layer instance.
+    ///
+    /// Implementations should ensure that cloned instances share the same underlying data
+    /// (e.g., using Arc for shared ownership). Changes made through one instance should be
+    /// visible in all cloned instances. This is the standard cloning behavior for all
+    /// Network implementations.
+    fn clone_box(&self) -> Box<dyn Network>;
 }
