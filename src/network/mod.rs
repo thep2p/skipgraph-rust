@@ -1,7 +1,6 @@
 pub mod mock;
 
 use crate::core::Identifier;
-use std::sync::{Arc, Mutex};
 
 /// Payload enum defines the semantics of the message payload that can be sent over the network.
 #[derive(Debug)]
@@ -38,7 +37,7 @@ pub trait Network: Send + Sync {
     /// Registering a new processor is illegal if there is already a processor registered, and causes an error.
     fn register_processor(
         &mut self,
-        processor: Box<Arc<Mutex<dyn MessageProcessor>>>,
+        processor: Box<dyn MessageProcessor>,
     ) -> anyhow::Result<()>;
 
     /// Creates a shallow copy of this networking layer instance.
@@ -47,5 +46,6 @@ pub trait Network: Send + Sync {
     /// (e.g., using Arc for shared ownership). Changes made through one instance should be
     /// visible in all cloned instances. This is the standard cloning behavior for all
     /// Network implementations.
+    #[allow(dead_code)]
     fn clone_box(&self) -> Box<dyn Network>;
 }

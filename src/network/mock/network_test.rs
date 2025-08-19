@@ -3,22 +3,36 @@ use crate::network::mock::hub::NetworkHub;
 use crate::network::Payload::TestMessage;
 use crate::network::{Message, MessageProcessor, Network};
 use std::collections::HashSet;
-use std::sync::{Arc, Barrier, Mutex};
+use std::sync::{Arc, Barrier, Mutex, RwLock};
 use std::thread;
 
 struct MockMessageProcessor {
+    inner: Arc<RwLock<MockMessageProcessorInner>>,
+}
+
+struct MockMessageProcessorInner {
     seen: HashSet<String>,
 }
 
 impl MockMessageProcessor {
     fn new() -> Arc<Mutex<Self>> {
         Arc::new(Mutex::new(MockMessageProcessor {
-            seen: HashSet::new(),
+            inner: Arc::new(RwLock::new(MockMessageProcessorInner {
+                seen: HashSet::new(),
+            })),
         }))
     }
 
     fn has_seen(&self, content: &str) -> bool {
-        self.seen.contains(content)
+        self.inner.read().unwrap().seen.contains(content)
+    }
+}
+
+impl Clone for MockMessageProcessor {
+    fn clone(&self) -> Self {
+        MockMessageProcessor {
+            inner: Arc::clone(&self.inner),
+        }
     }
 }
 
@@ -26,10 +40,14 @@ impl MessageProcessor for MockMessageProcessor {
     fn process_incoming_message(&mut self, message: Message) -> anyhow::Result<()> {
         match message.payload {
             TestMessage(content) => {
-                self.seen.insert(content);
+                self.inner.write().unwrap().seen.insert(content);
                 Ok(())
             }
         }
+    }
+
+    fn clone_box(&self) -> Box<dyn MessageProcessor> {
+        Box::new(self.clone())
     }
 }
 
