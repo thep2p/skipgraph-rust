@@ -9,14 +9,13 @@ use std::fmt::Formatter;
 // TODO: Remove #[allow(dead_code)] once LocalNode is used in production code. See issue #123 for tracking.
 #[allow(dead_code)]
 /// LocalNode is a struct that represents a single node in the local implementation of the skip graph.
-pub(crate) struct LocalNode {
+pub(crate) struct BaseNode {
     id: Identifier,
     mem_vec: MembershipVector,
     lt: Box<dyn LookupTable>,
 }
 
-impl Node for LocalNode {
-
+impl Node for BaseNode {
     fn get_identifier(&self) -> &Identifier {
         &self.id
     }
@@ -77,16 +76,14 @@ impl Node for LocalNode {
     ) -> anyhow::Result<IdentifierSearchResult> {
         // Collect neighbors from levels <= req.level in req.direction
         let candidates: Result<Vec<_>, _> = (0..=req.level())
-            .filter_map(|lvl| {
-                match self.lt.get_entry(lvl, req.direction()) {
-                    Ok(Some(identity)) => Some(Ok((*identity.id(), lvl))),
-                    Ok(None) => None,
-                    Err(e) => Some(Err(anyhow::anyhow!(
-                        "Error while searching by id in level {}: {}",
-                        lvl,
-                        e
-                    ))),
-                }
+            .filter_map(|lvl| match self.lt.get_entry(lvl, req.direction()) {
+                Ok(Some(identity)) => Some(Ok((*identity.id(), lvl))),
+                Ok(None) => None,
+                Err(e) => Some(Err(anyhow::anyhow!(
+                    "Error while searching by id in level {}: {}",
+                    lvl,
+                    e
+                ))),
             })
             .collect();
 
@@ -141,26 +138,26 @@ impl Node for LocalNode {
     }
 }
 
-impl LocalNode {
+impl BaseNode {
     /// Create a new `LocalNode` with the provided identifier, membership vector
     /// and lookup table.
     #[cfg(test)]
     pub(crate) fn new(id: Identifier, mem_vec: MembershipVector, lt: Box<dyn LookupTable>) -> Self {
-        LocalNode { id, mem_vec, lt }
+        BaseNode { id, mem_vec, lt }
     }
 }
 
 /// Implementing PartialEq for LocalNode to compare the id and membership vector.
 /// This basically supports == operator for LocalNode.
 /// The cardinal assumption is that the id and membership vector are unique for each node.
-impl PartialEq for LocalNode {
+impl PartialEq for BaseNode {
     fn eq(&self, other: &Self) -> bool {
         self.id == other.id && self.mem_vec == other.mem_vec
         // ignore lt for equality check as comparing trait objects is non-trivial
     }
 }
 
-impl fmt::Debug for LocalNode {
+impl fmt::Debug for BaseNode {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         f.debug_struct("LocalNode")
             .field("id", &self.id)
@@ -169,9 +166,9 @@ impl fmt::Debug for LocalNode {
     }
 }
 
-impl Clone for LocalNode {
+impl Clone for BaseNode {
     fn clone(&self) -> Self {
-        LocalNode {
+        BaseNode {
             id: self.id,
             mem_vec: self.mem_vec,
             lt: self.lt.clone(),
