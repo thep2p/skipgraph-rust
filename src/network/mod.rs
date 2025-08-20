@@ -1,6 +1,7 @@
 pub mod mock;
 
 use crate::core::Identifier;
+use std::sync::{Arc, RwLock};
 
 /// Payload enum defines the semantics of the message payload that can be sent over the network.
 #[derive(Debug)]
@@ -14,21 +15,36 @@ pub struct Message {
     pub target_node_id: Identifier,
 }
 
-/// MessageProcessor trait defines the entity that processes the incoming network messages at this node.
-/// 
-/// Implementations must be internally thread-safe and can be safely shared across threads.
-/// The process_incoming_message method takes &self (not &mut self) to enforce this pattern.
-/// Internal mutability should be achieved using Arc<RwLock<T>> or similar patterns.
-pub trait MessageProcessor: Send + Sync {
+/// Core message processing logic that implementations must provide.
+/// This trait is deliberately simple and doesn't require thread-safety concerns.
+/// The MessageProcessor wrapper handles all synchronization automatically.
+pub trait MessageProcessorCore: Send + Sync {
+    /// Process an incoming message. This method will be called with proper synchronization.
     fn process_incoming_message(&self, message: Message) -> anyhow::Result<()>;
+}
+
+/// A thread-safe wrapper that enforces internal thread-safety for message processors.
+/// This type guarantees that all message processing is properly synchronized.
+#[derive(Clone)]
+pub struct MessageProcessor {
+    core: Arc<RwLock<Box<dyn MessageProcessorCore>>>,
+}
+
+impl MessageProcessor {
+    /// Creates a new thread-safe message processor from a core implementation.
+    pub fn new(core: Box<dyn MessageProcessorCore>) -> Self {
+        Self {
+            core: Arc::new(RwLock::new(core)),
+        }
+    }
     
-    /// Creates a shallow copy of this message processor.
-    /// 
-    /// Implementations should ensure that cloned instances share the same underlying data
-    /// (e.g., using Arc for shared ownership). Changes made through one instance should be
-    /// visible in all cloned instances. This is the standard cloning behavior for all
-    /// MessageProcessor implementations.
-    fn clone_box(&self) -> Box<dyn MessageProcessor>;
+    /// Process an incoming message with guaranteed thread-safety.
+    pub fn process_incoming_message(&self, message: Message) -> anyhow::Result<()> {
+        let core = self.core.read()
+            .map_err(|_| anyhow::anyhow!("Failed to acquire read lock on message processor"))?;
+        core.process_incoming_message(message)
+    }
+    
 }
 
 /// Network trait defines the interface for a network service that can send and receive messages.
@@ -41,7 +57,7 @@ pub trait Network: Send + Sync {
     /// Registering a new processor is illegal if there is already a processor registered, and causes an error.
     fn register_processor(
         &self,
-        processor: Box<dyn MessageProcessor>,
+        processor: MessageProcessor,
     ) -> anyhow::Result<()>;
 
     /// Creates a shallow copy of this networking layer instance.

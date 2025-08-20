@@ -8,10 +8,10 @@ use std::sync::{Arc, Mutex};
 /// 
 /// Thread-safety is handled internally using Mutex for the processor, following a Go-like approach
 /// where the struct can be safely shared via Arc<MockNetwork> without external locking.
-/// MessageProcessor implementations are also internally thread-safe, so we only need Arc for the Option.
+/// MessageProcessor is inherently thread-safe, so we only need a simple Option wrapper.
 pub struct MockNetwork {
     hub: Arc<NetworkHub>,
-    processor: Arc<Mutex<Option<Box<dyn MessageProcessor>>>>,
+    processor: Arc<Mutex<Option<MessageProcessor>>>,
 }
 
 impl MockNetwork {
@@ -64,7 +64,7 @@ impl Network for MockNetwork {
     /// If a processor is already registered, an error is returned.
     fn register_processor(
         &self,
-        processor: Box<dyn MessageProcessor>,
+        processor: MessageProcessor,
     ) -> anyhow::Result<()> {
         let mut processor_guard = self.processor
             .lock()

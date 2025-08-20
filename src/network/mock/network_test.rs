@@ -1,7 +1,7 @@
 use crate::core::testutil::fixtures::random_identifier;
 use crate::network::mock::hub::NetworkHub;
 use crate::network::Payload::TestMessage;
-use crate::network::{Message, MessageProcessor, Network};
+use crate::network::{Message, MessageProcessor, MessageProcessorCore, Network};
 use std::collections::HashSet;
 use std::sync::{Arc, Barrier, RwLock};
 use std::thread;
@@ -36,7 +36,7 @@ impl Clone for MockMessageProcessor {
     }
 }
 
-impl MessageProcessor for MockMessageProcessor {
+impl MessageProcessorCore for MockMessageProcessor {
     fn process_incoming_message(&self, message: Message) -> anyhow::Result<()> {
         match message.payload {
             TestMessage(content) => {
@@ -44,10 +44,6 @@ impl MessageProcessor for MockMessageProcessor {
                 Ok(())
             }
         }
-    }
-
-    fn clone_box(&self) -> Box<dyn MessageProcessor> {
-        Box::new(self.clone())
     }
 }
 
@@ -57,21 +53,22 @@ fn test_mock_message_processor() {
     let hub = NetworkHub::new();
     let identifier = random_identifier();
     let mock_network = NetworkHub::new_mock_network(hub.clone(), identifier).unwrap();
-    let processor = MockMessageProcessor::new();
+    let core_processor = MockMessageProcessor::new();
+    let processor = MessageProcessor::new(Box::new(core_processor.clone()));
     let message = Message {
         payload: TestMessage("Hello, World!".to_string()),
         target_node_id: identifier,
     };
 
-    assert!(!processor.has_seen("Hello, World!"));
+    assert!(!core_processor.has_seen("Hello, World!"));
     
     assert!(mock_network
-        .register_processor(processor.clone_box())
+        .register_processor(processor)
         .is_ok());
     
     assert!(hub.route_message(message).is_ok());
     
-    assert!(processor.has_seen("Hello, World!"));
+    assert!(core_processor.has_seen("Hello, World!"));
 }
 
 /// This test ensures correct routing and processing of messages between mock networks through the `NetworkHub`.
@@ -81,9 +78,10 @@ fn test_hub_route_message() {
 
     let id_1 = random_identifier();
     let mock_net_1 = NetworkHub::new_mock_network(hub.clone(), id_1).unwrap();
-    let msg_proc_1 = MockMessageProcessor::new();
+    let core_proc_1 = MockMessageProcessor::new();
+    let msg_proc_1 = MessageProcessor::new(Box::new(core_proc_1.clone()));
     mock_net_1
-        .register_processor(msg_proc_1.clone_box())
+        .register_processor(msg_proc_1)
         .expect("Failed to register message processor");
 
     let id_2 = random_identifier();
@@ -94,11 +92,11 @@ fn test_hub_route_message() {
         target_node_id: id_1,
     };
 
-    assert!(!msg_proc_1.has_seen("Test message"));
+    assert!(!core_proc_1.has_seen("Test message"));
     
     assert!(mock_net_2.send_message(message).is_ok());
     
-    assert!(msg_proc_1.has_seen("Test message"));
+    assert!(core_proc_1.has_seen("Test message"));
 }
 
 /// This test verifies that cloning a NetworkHub results in a shallow copy where cloned instances share the same underlying data.
@@ -119,19 +117,20 @@ fn test_network_hub_shallow_clone() {
     };
     
     // Register a processor on the mock network
-    let processor = MockMessageProcessor::new();
+    let core_processor = MockMessageProcessor::new();
+    let processor = MessageProcessor::new(Box::new(core_processor.clone()));
     mock_network
-        .register_processor(processor.clone_box())
+        .register_processor(processor)
         .expect("Failed to register message processor");
     
     // Verify the message hasn't been seen yet
-    assert!(!processor.has_seen("Shallow clone test"));
+    assert!(!core_processor.has_seen("Shallow clone test"));
     
     // Route message through the CLONED hub - this should work because it shares the same underlying data
     assert!(hub_clone.route_message(message).is_ok());
     
     // Verify the message was processed - proving the clone shares the same networks map
-    assert!(processor.has_seen("Shallow clone test"));
+    assert!(core_processor.has_seen("Shallow clone test"));
 }
 
 /// This test sends 10 messages concurrently from mock_net_2 to id_1 and verifies that all messages are processed.
@@ -141,9 +140,10 @@ fn test_concurrent_message_sending() {
 
     let id_1 = random_identifier();
     let mock_net_1 = NetworkHub::new_mock_network(hub.clone(), id_1).unwrap();
-    let msg_proc_1 = MockMessageProcessor::new();
+    let core_proc_1 = MockMessageProcessor::new();
+    let msg_proc_1 = MessageProcessor::new(Box::new(core_proc_1.clone()));
     mock_net_1
-        .register_processor(msg_proc_1.clone_box())
+        .register_processor(msg_proc_1)
         .expect("Failed to register message processor");
 
     let id_2 = random_identifier();
@@ -188,7 +188,7 @@ fn test_concurrent_message_sending() {
     // Verify that all messages were received
     for content in message_contents {
         assert!(
-            msg_proc_1.has_seen(&content),
+            core_proc_1.has_seen(&content),
             "Message '{content}' was not received"
         );
         println!("Message '{content}' was successfully processed");

@@ -158,4 +158,4 @@ guard.method()?;
 - **Cleaner APIs**: Methods take &self instead of &mut self when possible
 - **Reduced Complexity**: Consumers don't need to manage Arc<Mutex<Option<T>>> patterns
 
-**Reference Implementation**: See `MessageProcessor` trait in `src/network/mod.rs` - implementations are internally thread-safe and can be used as `Arc<Option<Box<dyn MessageProcessor>>>` rather than `Arc<Mutex<Option<Box<dyn MessageProcessor>>>>`.
+**Reference Implementation**: See `MessageProcessor` struct in `src/network/mod.rs` - this wrapper type enforces internal thread-safety at the interface level. Developers implement the simple `MessageProcessorCore` trait, and the `MessageProcessor` wrapper automatically provides thread-safety, eliminating the need for `Arc<Mutex<Option<Box<dyn MessageProcessor>>>>` patterns.
