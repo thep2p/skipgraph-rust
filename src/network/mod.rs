@@ -15,8 +15,12 @@ pub struct Message {
 }
 
 /// MessageProcessor trait defines the entity that processes the incoming network messages at this node.
+/// 
+/// Implementations must be internally thread-safe and can be safely shared across threads.
+/// The process_incoming_message method takes &self (not &mut self) to enforce this pattern.
+/// Internal mutability should be achieved using Arc<RwLock<T>> or similar patterns.
 pub trait MessageProcessor: Send + Sync {
-    fn process_incoming_message(&mut self, message: Message) -> anyhow::Result<()>;
+    fn process_incoming_message(&self, message: Message) -> anyhow::Result<()>;
     
     /// Creates a shallow copy of this message processor.
     /// 

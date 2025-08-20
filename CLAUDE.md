@@ -109,3 +109,53 @@ impl Clone for Box<dyn LogicTrait> {
 - Systems where multiple handles to the same logical entity are needed
 
 **Why Not Copy**: Copy requires all fields to be Copy, doesn't work with trait objects, and semantically implies independent data rather than shared ownership.
+
+### Internal Thread Safety Pattern
+
+**Principle**: Prefer internal thread safety over external mutual exclusion. Structures should be internally thread-safe using Arc<RwLock<T>> patterns rather than requiring external Arc<Mutex<T>> wrapping.
+
+**Preferred Pattern**:
+```rust
+// GOOD: Internal thread safety
+pub struct ThreadSafeStruct {
+    inner: Arc<RwLock<InnerState>>,
+}
+
+impl ThreadSafeStruct {
+    pub fn method(&self) -> Result<()> {
+        // Internal locking handled transparently
+        self.inner.write().unwrap().do_something()
+    }
+}
+
+// Usage: Simple Arc sharing
+let instance = Arc<ThreadSafeStruct>::new(ThreadSafeStruct::new());
+```
+
+**Avoid Pattern**:
+```rust
+// AVOID: External mutual exclusion
+pub struct UnsafeStruct {
+    data: SomeData,
+}
+
+impl UnsafeStruct {
+    pub fn method(&mut self) -> Result<()> {
+        self.data.do_something()
+    }
+}
+
+// Usage: Complex Arc<Mutex<>> wrapping required
+let instance = Arc<Mutex<UnsafeStruct>>::new(UnsafeStruct::new());
+let guard = instance.lock().unwrap();
+guard.method()?;
+```
+
+**Benefits**:
+- **Simplified Usage**: No external locking required by consumers
+- **Encapsulation**: Thread safety is an implementation detail
+- **Go-like**: Similar to Go's sync.Mutex pattern where structs handle their own locking
+- **Cleaner APIs**: Methods take &self instead of &mut self when possible
+- **Reduced Complexity**: Consumers don't need to manage Arc<Mutex<Option<T>>> patterns
+
+**Reference Implementation**: See `MessageProcessor` trait in `src/network/mod.rs` - implementations are internally thread-safe and can be used as `Arc<Option<Box<dyn MessageProcessor>>>` rather than `Arc<Mutex<Option<Box<dyn MessageProcessor>>>>`.

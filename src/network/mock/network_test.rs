@@ -3,7 +3,7 @@ use crate::network::mock::hub::NetworkHub;
 use crate::network::Payload::TestMessage;
 use crate::network::{Message, MessageProcessor, Network};
 use std::collections::HashSet;
-use std::sync::{Arc, Barrier, Mutex, RwLock};
+use std::sync::{Arc, Barrier, RwLock};
 use std::thread;
 
 struct MockMessageProcessor {
@@ -15,12 +15,12 @@ struct MockMessageProcessorInner {
 }
 
 impl MockMessageProcessor {
-    fn new() -> Arc<Mutex<Self>> {
-        Arc::new(Mutex::new(MockMessageProcessor {
+    fn new() -> Self {
+        MockMessageProcessor {
             inner: Arc::new(RwLock::new(MockMessageProcessorInner {
                 seen: HashSet::new(),
             })),
-        }))
+        }
     }
 
     fn has_seen(&self, content: &str) -> bool {
@@ -37,7 +37,7 @@ impl Clone for MockMessageProcessor {
 }
 
 impl MessageProcessor for MockMessageProcessor {
-    fn process_incoming_message(&mut self, message: Message) -> anyhow::Result<()> {
+    fn process_incoming_message(&self, message: Message) -> anyhow::Result<()> {
         match message.payload {
             TestMessage(content) => {
                 self.inner.write().unwrap().seen.insert(content);
@@ -63,24 +63,15 @@ fn test_mock_message_processor() {
         target_node_id: identifier,
     };
 
-    {
-        let proc_guard = processor.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
-        assert!(!proc_guard.has_seen("Hello, World!"));
-    }
+    assert!(!processor.has_seen("Hello, World!"));
     
-    {
-        let proc_guard = processor.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
-        assert!(mock_network
-            .register_processor(proc_guard.clone_box())
-            .is_ok());
-    }
+    assert!(mock_network
+        .register_processor(processor.clone_box())
+        .is_ok());
     
     assert!(hub.route_message(message).is_ok());
     
-    {
-        let proc_guard = processor.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
-        assert!(proc_guard.has_seen("Hello, World!"));
-    }
+    assert!(processor.has_seen("Hello, World!"));
 }
 
 /// This test ensures correct routing and processing of messages between mock networks through the `NetworkHub`.
@@ -91,12 +82,9 @@ fn test_hub_route_message() {
     let id_1 = random_identifier();
     let mock_net_1 = NetworkHub::new_mock_network(hub.clone(), id_1).unwrap();
     let msg_proc_1 = MockMessageProcessor::new();
-    {
-        let proc_guard = msg_proc_1.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
-        mock_net_1
-            .register_processor(proc_guard.clone_box())
-            .expect("Failed to register message processor");
-    }
+    mock_net_1
+        .register_processor(msg_proc_1.clone_box())
+        .expect("Failed to register message processor");
 
     let id_2 = random_identifier();
     let mock_net_2 = NetworkHub::new_mock_network(hub, id_2).unwrap();
@@ -106,17 +94,11 @@ fn test_hub_route_message() {
         target_node_id: id_1,
     };
 
-    {
-        let proc_guard = msg_proc_1.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
-        assert!(!proc_guard.has_seen("Test message"));
-    }
+    assert!(!msg_proc_1.has_seen("Test message"));
     
     assert!(mock_net_2.send_message(message).is_ok());
     
-    {
-        let proc_guard = msg_proc_1.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
-        assert!(proc_guard.has_seen("Test message"));
-    }
+    assert!(msg_proc_1.has_seen("Test message"));
 }
 
 /// This test verifies that cloning a NetworkHub results in a shallow copy where cloned instances share the same underlying data.
@@ -138,27 +120,18 @@ fn test_network_hub_shallow_clone() {
     
     // Register a processor on the mock network
     let processor = MockMessageProcessor::new();
-    {
-        let proc_guard = processor.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
-        mock_network
-            .register_processor(proc_guard.clone_box())
-            .expect("Failed to register message processor");
-    }
+    mock_network
+        .register_processor(processor.clone_box())
+        .expect("Failed to register message processor");
     
     // Verify the message hasn't been seen yet
-    {
-        let proc_guard = processor.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
-        assert!(!proc_guard.has_seen("Shallow clone test"));
-    }
+    assert!(!processor.has_seen("Shallow clone test"));
     
     // Route message through the CLONED hub - this should work because it shares the same underlying data
     assert!(hub_clone.route_message(message).is_ok());
     
     // Verify the message was processed - proving the clone shares the same networks map
-    {
-        let proc_guard = processor.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
-        assert!(proc_guard.has_seen("Shallow clone test"));
-    }
+    assert!(processor.has_seen("Shallow clone test"));
 }
 
 /// This test sends 10 messages concurrently from mock_net_2 to id_1 and verifies that all messages are processed.
@@ -169,12 +142,9 @@ fn test_concurrent_message_sending() {
     let id_1 = random_identifier();
     let mock_net_1 = NetworkHub::new_mock_network(hub.clone(), id_1).unwrap();
     let msg_proc_1 = MockMessageProcessor::new();
-    {
-        let proc_guard = msg_proc_1.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
-        mock_net_1
-            .register_processor(proc_guard.clone_box())
-            .expect("Failed to register message processor");
-    }
+    mock_net_1
+        .register_processor(msg_proc_1.clone_box())
+        .expect("Failed to register message processor");
 
     let id_2 = random_identifier();
     let mock_net_2 = NetworkHub::new_mock_network(hub, id_2).unwrap();
@@ -216,10 +186,9 @@ fn test_concurrent_message_sending() {
     }
 
     // Verify that all messages were received
-    let processor = msg_proc_1.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
     for content in message_contents {
         assert!(
-            processor.has_seen(&content),
+            msg_proc_1.has_seen(&content),
             "Message '{content}' was not received"
         );
         println!("Message '{content}' was successfully processed");
