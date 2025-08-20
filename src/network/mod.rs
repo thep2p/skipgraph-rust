@@ -1,7 +1,8 @@
 pub mod mock;
+mod processor;
 
 use crate::core::Identifier;
-use std::sync::{Arc, RwLock};
+pub use processor::MessageProcessor;
 
 /// Payload enum defines the semantics of the message payload that can be sent over the network.
 #[derive(Debug)]
@@ -23,30 +24,6 @@ pub trait MessageProcessorCore: Send + Sync {
     fn process_incoming_message(&self, message: Message) -> anyhow::Result<()>;
 }
 
-/// A thread-safe wrapper that enforces internal thread-safety for message processors.
-/// This type guarantees that all message processing is properly synchronized.
-#[derive(Clone)]
-pub struct MessageProcessor {
-    core: Arc<RwLock<Box<dyn MessageProcessorCore>>>,
-}
-
-impl MessageProcessor {
-    /// Creates a new thread-safe message processor from a core implementation.
-    pub fn new(core: Box<dyn MessageProcessorCore>) -> Self {
-        Self {
-            core: Arc::new(RwLock::new(core)),
-        }
-    }
-    
-    /// Process an incoming message with guaranteed thread-safety.
-    pub fn process_incoming_message(&self, message: Message) -> anyhow::Result<()> {
-        let core = self.core.read()
-            .map_err(|_| anyhow::anyhow!("Failed to acquire read lock on message processor"))?;
-        core.process_incoming_message(message)
-    }
-    
-}
-
 /// Network trait defines the interface for a network service that can send and receive messages.
 pub trait Network: Send + Sync {
     /// Sends a message to the network.
@@ -55,10 +32,7 @@ pub trait Network: Send + Sync {
     /// Registers a message processor to handle incoming messages.
     /// At any point in time, there can be only one processor registered.
     /// Registering a new processor is illegal if there is already a processor registered, and causes an error.
-    fn register_processor(
-        &self,
-        processor: MessageProcessor,
-    ) -> anyhow::Result<()>;
+    fn register_processor(&self, processor: processor::MessageProcessor) -> anyhow::Result<()>;
 
     /// Creates a shallow copy of this networking layer instance.
     ///
