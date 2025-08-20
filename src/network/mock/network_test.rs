@@ -119,6 +119,48 @@ fn test_hub_route_message() {
     }
 }
 
+/// This test verifies that cloning a NetworkHub results in a shallow copy where cloned instances share the same underlying data.
+#[test]
+fn test_network_hub_shallow_clone() {
+    let hub = NetworkHub::new();
+    let hub_clone = (*hub).clone();
+    
+    let identifier = random_identifier();
+    
+    // Create a mock network through the original hub
+    let mock_network = NetworkHub::new_mock_network(hub.clone(), identifier).unwrap();
+    
+    // Create a message to route through the cloned hub
+    let message = Message {
+        payload: TestMessage("Shallow clone test".to_string()),
+        target_node_id: identifier,
+    };
+    
+    // Register a processor on the mock network
+    let processor = MockMessageProcessor::new();
+    {
+        let proc_guard = processor.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
+        mock_network
+            .register_processor(proc_guard.clone_box())
+            .expect("Failed to register message processor");
+    }
+    
+    // Verify the message hasn't been seen yet
+    {
+        let proc_guard = processor.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
+        assert!(!proc_guard.has_seen("Shallow clone test"));
+    }
+    
+    // Route message through the CLONED hub - this should work because it shares the same underlying data
+    assert!(hub_clone.route_message(message).is_ok());
+    
+    // Verify the message was processed - proving the clone shares the same networks map
+    {
+        let proc_guard = processor.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
+        assert!(proc_guard.has_seen("Shallow clone test"));
+    }
+}
+
 /// This test sends 10 messages concurrently from mock_net_2 to id_1 and verifies that all messages are processed.
 #[test]
 fn test_concurrent_message_sending() {

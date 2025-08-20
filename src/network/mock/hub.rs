@@ -11,14 +11,16 @@ use std::sync::{Arc, RwLock};
 /// 
 /// Thread-safety is handled internally using RwLock for the networks map, following a Go-like approach
 /// where the struct can be safely shared via Arc<NetworkHub> without external locking.
+/// 
+/// Implements shallow cloning where cloned instances share the same underlying data.
 pub struct NetworkHub {
-    networks: RwLock<HashMap<Identifier, Arc<MockNetwork>>>,
+    networks: Arc<RwLock<HashMap<Identifier, Arc<MockNetwork>>>>,
 }
 
 impl NetworkHub {
     pub fn new() -> Arc<Self> {
         Arc::new(NetworkHub {
-            networks: RwLock::new(HashMap::new()),
+            networks: Arc::new(RwLock::new(HashMap::new())),
         })
     }
 
@@ -61,6 +63,14 @@ impl NetworkHub {
                 "Network with identifier {} not found",
                 message.target_node_id
             ))
+        }
+    }
+}
+
+impl Clone for NetworkHub {
+    fn clone(&self) -> Self {
+        NetworkHub {
+            networks: Arc::clone(&self.networks),
         }
     }
 }
