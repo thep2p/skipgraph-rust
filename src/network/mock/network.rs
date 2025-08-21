@@ -52,10 +52,11 @@ impl MockNetwork {
 
 impl Clone for MockNetwork {
     fn clone(&self) -> Self {
+        let core_guard = self.core.read().unwrap();
         MockNetwork {
             core: RwLock::new(InnerMockNetwork {
-                hub: self.core.read().unwrap().hub.clone(),
-                processor: Arc::new(None), // Each clone starts with no processor registered
+                hub: core_guard.hub.clone(),
+                processor: Arc::clone(&core_guard.processor), // Share processor state between clones
             }),
         }
     }
