@@ -95,6 +95,6 @@ impl Network for MockNetwork {
     }
 
     fn clone_box(&self) -> Box<dyn Network> {
-        Box::new(self.clone())   
+        Box::new(self.clone())
     }
 }
