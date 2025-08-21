@@ -15,7 +15,7 @@ pub struct MockNetwork {
 
 struct InnerMockNetwork {
     hub: NetworkHub,
-    processor: Arc<Option<MessageProcessor>>,
+    processor: Option<MessageProcessor>,
 }
 
 impl MockNetwork {
@@ -24,7 +24,7 @@ impl MockNetwork {
         MockNetwork {
             core: RwLock::new(InnerMockNetwork {
                 hub,
-                processor: Arc::new(None),
+                processor: None,
             }),
         }
     }
@@ -56,7 +56,7 @@ impl Clone for MockNetwork {
         MockNetwork {
             core: RwLock::new(InnerMockNetwork {
                 hub: core_guard.hub.clone(),
-                processor: Arc::clone(&core_guard.processor), // Share processor state between clones
+                processor: core_guard.processor.clone(), // Share processor state between clones
             }),
         }
     }
@@ -88,7 +88,7 @@ impl Network for MockNetwork {
         match core_guard.processor.as_ref() {
             Some(_) => Err(anyhow!("A message processor is already registered")),
             None => {
-                core_guard.processor = Arc::new(Some(processor));
+                core_guard.processor = Some(processor);
                 Ok(())
             }
         }
