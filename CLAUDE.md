@@ -159,3 +159,80 @@ guard.method()?;
 - **Reduced Complexity**: Consumers don't need to manage Arc<Mutex<Option<T>>> patterns
 
 **Reference Implementation**: See `MessageProcessor` struct in `src/network/mod.rs` - this wrapper type enforces internal thread-safety at the interface level. Developers implement the simple `MessageProcessorCore` trait, and the `MessageProcessor` wrapper automatically provides thread-safety, eliminating the need for `Arc<Mutex<Option<Box<dyn MessageProcessor>>>>` patterns.
+
+### Struct-Level RwLock Pattern (Go-like Approach)
+
+**Principle**: When a struct contains multiple fields that need coordinated mutation, avoid placing Mutex/RwLock on individual fields. Instead, group related fields into an Inner struct and govern the entire Inner struct with a single RwLock. This mirrors Go's approach where structs contain a single sync.RWMutex to protect all their fields.
+
+**Preferred Pattern**:
+```rust
+// GOOD: Single RwLock governing entire inner state
+pub struct ExternalStruct {
+    core: Arc<RwLock<InnerExternalStruct>>,
+}
+
+struct InnerExternalStruct {
+    hub: Arc<SomeComponent>,           // Components provide their own internal thread-safety
+    processor: Arc<Option<SomeProcessor>>, // Immutable Arc once set
+    other_field: String,
+}
+
+impl ExternalStruct {
+    pub fn read_operation(&self) -> Result<String> {
+        let core_guard = self.core.read()
+            .map_err(|_| anyhow!("Failed to acquire read lock"))?;
+        
+        // Read access to all fields under single lock
+        Ok(core_guard.other_field.clone())
+    }
+    
+    pub fn write_operation(&self, processor: SomeProcessor) -> Result<()> {
+        let mut core_guard = self.core.write()
+            .map_err(|_| anyhow!("Failed to acquire write lock"))?;
+        
+        // Write access to coordinate changes across fields
+        core_guard.processor = Arc::new(Some(processor));
+        core_guard.other_field = "updated".to_string();
+        Ok(())
+    }
+}
+```
+
+**Avoid Pattern**:
+```rust
+// AVOID: Multiple individual locks creating potential deadlocks
+pub struct BadStruct {
+    hub: Arc<RwLock<SomeComponent>>,        // Individual field locks
+    processor: Arc<RwLock<Option<SomeProcessor>>>, // Can cause deadlocks
+    other_field: Arc<RwLock<String>>,       // Complex lock coordination needed
+}
+
+impl BadStruct {
+    pub fn complex_operation(&self) -> Result<()> {
+        // Potential deadlock: multiple lock acquisition order matters
+        let hub_guard = self.hub.write()?;
+        let proc_guard = self.processor.write()?;  // Deadlock risk!
+        let field_guard = self.other_field.write()?; // More deadlock risk!
+        
+        // Complex coordination logic here...
+        Ok(())
+    }
+}
+```
+
+**Key Guidelines**:
+1. **One RwLock Per Logical Entity**: Each struct should have one primary RwLock protecting its core state
+2. **Inner Struct Pattern**: Group mutable fields into an Inner struct protected by the RwLock
+3. **Component Thread-Safety**: Individual components (like `Arc<NetworkHub>`) handle their own internal thread-safety
+4. **Immutable References**: Use `Arc<Option<T>>` for components that are set once and never mutated
+5. **Read/Write Segregation**: Use read locks for access operations, write locks for mutations
+6. **Lock Granularity**: Choose lock granularity based on logical operations, not individual field access
+
+**Benefits**:
+- **Deadlock Prevention**: Single lock eliminates complex lock ordering issues
+- **Atomic Operations**: Related field changes happen atomically under one lock
+- **Go-like Simplicity**: Mirrors familiar Go patterns with sync.RWMutex
+- **Clear Ownership**: One lock clearly owns the struct's mutable state
+- **Performance**: Fewer lock acquisitions for operations affecting multiple fields
+
+**Reference Implementation**: See `MockNetwork` struct in `src/network/mock/network.rs` - uses `Arc<RwLock<InnerMockNetwork>>` pattern where `InnerMockNetwork` contains all mutable state, while individual components like `Arc<NetworkHub>` provide their own internal thread-safety.
