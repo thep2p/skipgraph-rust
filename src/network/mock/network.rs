@@ -1,7 +1,7 @@
 use crate::network::mock::hub::NetworkHub;
 use crate::network::{Message, MessageProcessor, Network};
 use anyhow::Context;
-use std::sync::{Arc, Mutex};
+use std::sync::{Arc, RwLock};
 
 /// MockNetwork is a mock implementation of the Network trait for testing purposes.
 /// It does not perform any real network operations but simulates message routing and processing through a `NetworkHub`.
@@ -10,16 +10,22 @@ use std::sync::{Arc, Mutex};
 /// where the struct can be safely shared via Arc<MockNetwork> without external locking.
 /// MessageProcessor is inherently thread-safe, so we only need a simple Option wrapper.
 pub struct MockNetwork {
+    core: Arc<RwLock<InnerMockNetwork>>,
+}
+
+struct InnerMockNetwork {
     hub: Arc<NetworkHub>,
-    processor: Arc<Mutex<Option<MessageProcessor>>>,
+    processor: Arc<Option<MessageProcessor>>,
 }
 
 impl MockNetwork {
     /// Creates a new instance of MockNetwork with the given NetworkHub.
     pub fn new(hub: Arc<NetworkHub>) -> Self {
         MockNetwork {
-            hub,
-            processor: Arc::new(Mutex::new(None)),
+            core: Arc::new(RwLock::new(InnerMockNetwork {
+                hub,
+                processor: Arc::new(None),
+            })),
         }
     }
 
@@ -29,12 +35,14 @@ impl MockNetwork {
     ///   Returns:
     /// * `Result<(), anyhow::Error>`: Returns Ok if the message was processed successfully, or an error if processing failed.
     pub fn incoming_message(&self, message: Message) -> anyhow::Result<()> {
-        let processor_guard = self.processor
-            .lock()
-            .map_err(|_| anyhow::anyhow!("Failed to acquire lock on processor container"))?;
+        let core_guard = self.core
+            .read()
+            .map_err(|_| anyhow::anyhow!("Failed to acquire read lock on core"))?;
         
-        let processor = processor_guard.as_ref()
-            .ok_or_else(|| anyhow::anyhow!("No message processor registered"))?;
+        let processor = match core_guard.processor.as_ref() {
+            Some(p) => p,
+            None => return Err(anyhow::anyhow!("No message processor registered")),
+        };
         
         processor
             .process_incoming_message(message)
@@ -45,8 +53,10 @@ impl MockNetwork {
 impl Clone for MockNetwork {
     fn clone(&self) -> Self {
         MockNetwork {
-            hub: Arc::clone(&self.hub),
-            processor: Arc::new(Mutex::new(None)), // Each clone starts with no processor registered
+            core: Arc::new(RwLock::new(InnerMockNetwork {
+                hub: Arc::clone(&self.core.read().unwrap().hub),
+                processor: Arc::new(None), // Each clone starts with no processor registered
+            })),
         }
     }
 }
@@ -54,7 +64,11 @@ impl Clone for MockNetwork {
 impl Network for MockNetwork {
     /// Sends a message through the mock network by routing it through the NetworkHub.
     fn send_message(&self, message: Message) -> anyhow::Result<()> {
-        self.hub
+        let core_guard = self.core
+            .read()
+            .map_err(|_| anyhow::anyhow!("Failed to acquire read lock on core"))?;
+        
+        core_guard.hub
             .route_message(message)
             .context("Failed to route message")
     }
@@ -66,14 +80,14 @@ impl Network for MockNetwork {
         &self,
         processor: MessageProcessor,
     ) -> anyhow::Result<()> {
-        let mut processor_guard = self.processor
-            .lock()
-            .map_err(|_| anyhow::anyhow!("Failed to acquire lock on processor container"))?;
+        let mut core_guard = self.core
+            .write()
+            .map_err(|_| anyhow::anyhow!("Failed to acquire write lock on core"))?;
         
-        match processor_guard.as_ref() {
+        match core_guard.processor.as_ref() {
             Some(_) => Err(anyhow::anyhow!("A message processor is already registered")),
             None => {
-                *processor_guard = Some(processor);
+                core_guard.processor = Arc::new(Some(processor));
                 Ok(())
             }
         }
