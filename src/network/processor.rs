@@ -1,3 +1,4 @@
+use anyhow::anyhow;
 use std::sync::{Arc, RwLock};
 use crate::network::{Message, MessageProcessorCore};
 
@@ -19,7 +20,7 @@ impl MessageProcessor {
     /// Process an incoming message with guaranteed thread-safety.
     pub fn process_incoming_message(&self, message: Message) -> anyhow::Result<()> {
         let core = self.core.read()
-            .map_err(|_| anyhow::anyhow!("Failed to acquire read lock on message processor"))?;
+            .map_err(|_| anyhow!("Failed to acquire read lock on message processor"))?;
         core.process_incoming_message(message)
     }
 }

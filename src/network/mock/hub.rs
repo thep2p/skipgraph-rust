@@ -32,7 +32,7 @@ impl NetworkHub {
             .map_err(|_| anyhow!("Failed to acquire write lock on network hub"))?;
 
         if networks.contains_key(&identifier) {
-            return Err(anyhow::anyhow!(
+            return Err(anyhow!(
                 "Network with identifier {} already exists",
                 identifier
             ));

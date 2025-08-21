@@ -1,6 +1,6 @@
 use crate::network::mock::hub::NetworkHub;
 use crate::network::{Message, MessageProcessor, Network};
-use anyhow::Context;
+use anyhow::{anyhow, Context};
 use std::sync::{Arc, RwLock};
 
 /// MockNetwork is a mock implementation of the Network trait for testing purposes.
@@ -37,11 +37,11 @@ impl MockNetwork {
     pub fn incoming_message(&self, message: Message) -> anyhow::Result<()> {
         let core_guard = self.core
             .read()
-            .map_err(|_| anyhow::anyhow!("Failed to acquire read lock on core"))?;
+            .map_err(|_| anyhow!("Failed to acquire read lock on core"))?;
         
         let processor = match core_guard.processor.as_ref() {
             Some(p) => p,
-            None => return Err(anyhow::anyhow!("No message processor registered")),
+            None => return Err(anyhow!("No message processor registered")),
         };
         
         processor
@@ -67,7 +67,7 @@ impl Network for MockNetwork {
     fn send_message(&self, message: Message) -> anyhow::Result<()> {
         let core_guard = self.core
             .read()
-            .map_err(|_| anyhow::anyhow!("Failed to acquire read lock on core"))?;
+            .map_err(|_| anyhow!("Failed to acquire read lock on core"))?;
         
         core_guard.hub
             .route_message(message)
@@ -83,10 +83,10 @@ impl Network for MockNetwork {
     ) -> anyhow::Result<()> {
         let mut core_guard = self.core
             .write()
-            .map_err(|_| anyhow::anyhow!("Failed to acquire write lock on core"))?;
+            .map_err(|_| anyhow!("Failed to acquire write lock on core"))?;
         
         match core_guard.processor.as_ref() {
-            Some(_) => Err(anyhow::anyhow!("A message processor is already registered")),
+            Some(_) => Err(anyhow!("A message processor is already registered")),
             None => {
                 core_guard.processor = Arc::new(Some(processor));
                 Ok(())
