@@ -10,7 +10,7 @@ use std::sync::{Arc, RwLock};
 /// where the struct can be safely shared via Arc<MockNetwork> without external locking.
 /// MessageProcessor is inherently thread-safe, so we only need a simple Option wrapper.
 pub struct MockNetwork {
-    core: Arc<RwLock<InnerMockNetwork>>,
+    core: RwLock<InnerMockNetwork>,
 }
 
 struct InnerMockNetwork {
@@ -22,10 +22,10 @@ impl MockNetwork {
     /// Creates a new instance of MockNetwork with the given NetworkHub.
     pub fn new(hub: Arc<NetworkHub>) -> Self {
         MockNetwork {
-            core: Arc::new(RwLock::new(InnerMockNetwork {
+            core: RwLock::new(InnerMockNetwork {
                 hub,
                 processor: Arc::new(None),
-            })),
+            }),
         }
     }
 
@@ -53,10 +53,10 @@ impl MockNetwork {
 impl Clone for MockNetwork {
     fn clone(&self) -> Self {
         MockNetwork {
-            core: Arc::new(RwLock::new(InnerMockNetwork {
+            core: RwLock::new(InnerMockNetwork {
                 hub: Arc::clone(&self.core.read().unwrap().hub),
                 processor: Arc::new(None), // Each clone starts with no processor registered
-            })),
+            }),
         }
     }
 }
