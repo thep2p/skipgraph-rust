@@ -103,7 +103,7 @@ fn test_hub_route_message() {
 #[test]
 fn test_network_hub_shallow_clone() {
     let hub = NetworkHub::new();
-    let hub_clone = (*hub).clone();
+    let hub_clone = hub.clone();
     
     let identifier = random_identifier();
     

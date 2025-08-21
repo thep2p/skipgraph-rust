@@ -14,13 +14,13 @@ pub struct MockNetwork {
 }
 
 struct InnerMockNetwork {
-    hub: Arc<NetworkHub>,
+    hub: NetworkHub,
     processor: Arc<Option<MessageProcessor>>,
 }
 
 impl MockNetwork {
     /// Creates a new instance of MockNetwork with the given NetworkHub.
-    pub fn new(hub: Arc<NetworkHub>) -> Self {
+    pub fn new(hub: NetworkHub) -> Self {
         MockNetwork {
             core: RwLock::new(InnerMockNetwork {
                 hub,
@@ -54,7 +54,7 @@ impl Clone for MockNetwork {
     fn clone(&self) -> Self {
         MockNetwork {
             core: RwLock::new(InnerMockNetwork {
-                hub: Arc::clone(&self.core.read().unwrap().hub),
+                hub: self.core.read().unwrap().hub.clone(),
                 processor: Arc::new(None), // Each clone starts with no processor registered
             }),
         }
