@@ -6,7 +6,9 @@ use crate::core::{
 use crate::node::Node;
 use std::fmt;
 use std::fmt::Formatter;
-use crate::network::{MessageProcessor, Network};
+use crate::network::{Message, MessageProcessorCore, Network};
+#[cfg(test)]
+use crate::network::MessageProcessor;
 
 // TODO: Remove #[allow(dead_code)] once BaseNode is used in production code.
 #[allow(dead_code)]
@@ -141,15 +143,25 @@ impl Node for BaseNode {
     }
 }
 
+impl MessageProcessorCore for BaseNode {
+    fn process_incoming_message(&self, _message: Message) -> anyhow::Result<()> {
+        // For now, just return Ok since this is just being implemented to fix the compile error
+        // In the future, this would process the incoming message based on payload type
+        Ok(())
+    }
+}
+
 impl BaseNode {
     /// Create a new `BaseNode` with the provided identifier, membership vector
     /// and lookup table.
     #[cfg(test)]
-    pub(crate) fn new(id: Identifier, mem_vec: MembershipVector, lt: Box<dyn LookupTable>, net: Box<dyn Network>) -> Self {
+    pub(crate) fn new(id: Identifier, mem_vec: MembershipVector, lt: Box<dyn LookupTable>, net: Box<dyn Network>) -> anyhow::Result<Self> {
         let clone_net = net.clone();
-        let mut node = BaseNode { id, mem_vec, lt, net};
-        clone_net.register_processor(node.clone() as MessageProcessor).map_err(|e| anyhow!(Err("could not register node in network: {}, e"))).unwrap();
-        node
+        let node = BaseNode { id, mem_vec, lt, net};
+        // Create a MessageProcessor from this node, instead of casting directly
+        let processor = MessageProcessor::new(Box::new(node.clone()));
+        clone_net.register_processor(processor).map_err(|e| anyhow!("could not register node in network: {}", e))?;
+        Ok(node)
     }
 }
 

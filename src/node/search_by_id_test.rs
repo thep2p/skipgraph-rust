@@ -30,7 +30,7 @@ fn test_search_by_id_singleton_fallback() {
         mem_vec,
         Box::new(ArrayLookupTable::new(&span_fixture())),
         Box::new(NoopNetwork::new()),
-    );
+    ).expect("Failed to create BaseNode");
 
     // Left and right searches for identifiers 5 and 15
     let cases = [
@@ -77,7 +77,7 @@ fn test_search_by_id_found_left_direction() {
             random_membership_vector(),
             Box::new(lt.clone()),
             Box::new(NoopNetwork::new()),
-        );
+        ).expect("Failed to create BaseNode");
 
         let direction = Direction::Left;
         let req = IdentifierSearchRequest::new(target, lvl, direction);
@@ -128,7 +128,7 @@ fn test_search_by_id_found_right_direction() {
             random_membership_vector(),
             Box::new(lt.clone()),
             Box::new(NoopNetwork::new()),
-        );
+        ).expect("Failed to create BaseNode");
 
         let actual_result = node.search_by_id(&req).unwrap();
 
@@ -194,7 +194,7 @@ fn test_search_by_id_not_found_left_direction() {
             random_membership_vector(),
             Box::new(lt.clone()),
             Box::new(NoopNetwork::new()),
-        );
+        ).expect("Failed to create BaseNode");
 
         let direction = Direction::Left;
         let req = IdentifierSearchRequest::new(target, lvl, direction);
@@ -255,7 +255,7 @@ fn test_search_by_id_not_found_right_direction() {
             random_membership_vector(),
             Box::new(lt.clone()),
             Box::new(NoopNetwork::new()),
-        );
+        ).expect("Failed to create BaseNode");
 
         let direction = Direction::Right;
         let req = IdentifierSearchRequest::new(target, lvl, direction);
@@ -289,7 +289,7 @@ fn test_search_by_id_exact_result() {
         random_membership_vector(),
         Box::new(lt.clone()),
         Box::new(NoopNetwork::new()),
-    );
+    ).expect("Failed to create BaseNode");
 
     // This test should ensure that when the exact target is found, it returns the correct level and identifier.
     for lvl in 0..LOOKUP_TABLE_LEVELS {
@@ -335,7 +335,7 @@ fn test_search_by_id_concurrent_found_left_direction() {
         random_membership_vector(),
         Box::new(lt.clone()),
         Box::new(NoopNetwork::new()),
-    );
+    ).expect("Failed to create BaseNode");
 
     // Ensure the target is not the same as the node's identifier
     assert_ne!(&target, node.get_identifier());
@@ -417,7 +417,7 @@ fn test_search_by_id_concurrent_right_direction() {
         random_membership_vector(),
         Box::new(lt.clone()),
         Box::new(NoopNetwork::new()),
-    );
+    ).expect("Failed to create BaseNode");
 
     // Ensure the target is not the same as the node's identifier
     assert_ne!(&target, node.get_identifier());
@@ -526,7 +526,7 @@ fn test_search_by_id_error_propagation() {
         random_membership_vector(),
         Box::new(MockErrorLookupTable),
         Box::new(NoopNetwork::new()),
-    );
+    ).expect("Failed to create BaseNode");
 
     // Create a random search request (any search request will return an error as
     // the mock lookup table is designed to fail)
