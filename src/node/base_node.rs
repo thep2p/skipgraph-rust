@@ -192,6 +192,7 @@ mod tests {
         span_fixture,
     };
     use crate::core::ArrayLookupTable;
+    use crate::network::mock::noop_network::NoopNetwork;
 
     #[test]
     fn test_base_node() {
@@ -201,6 +202,7 @@ mod tests {
             id,
             mem_vec,
             lt: Box::new(ArrayLookupTable::new(&span_fixture())),
+            net: Box::new(NoopNetwork::new()),
         };
         assert_eq!(node.get_identifier(), &id);
         assert_eq!(node.get_membership_vector(), &mem_vec);
