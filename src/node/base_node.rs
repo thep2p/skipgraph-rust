@@ -7,7 +7,7 @@ use crate::node::Node;
 use std::fmt;
 use std::fmt::Formatter;
 use crate::network::{Message, MessageProcessorCore, Network};
-#[cfg(test)]
+#[cfg(test)] // TODO: Remove once BaseNode is used in production code.
 use crate::network::MessageProcessor;
 
 // TODO: Remove #[allow(dead_code)] once BaseNode is used in production code.
@@ -154,7 +154,7 @@ impl MessageProcessorCore for BaseNode {
 impl BaseNode {
     /// Create a new `BaseNode` with the provided identifier, membership vector
     /// and lookup table.
-    #[cfg(test)]
+    #[cfg(test)] // TODO: Remove once BaseNode is used in production code.
     pub(crate) fn new(id: Identifier, mem_vec: MembershipVector, lt: Box<dyn LookupTable>, net: Box<dyn Network>) -> anyhow::Result<Self> {
         let clone_net = net.clone();
         let node = BaseNode { id, mem_vec, lt, net};
