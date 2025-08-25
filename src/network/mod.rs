@@ -2,6 +2,7 @@ pub mod mock;
 mod processor;
 
 use crate::core::Identifier;
+#[allow(unused)]
 pub use processor::MessageProcessor;
 
 /// Payload enum defines the semantics of the message payload that can be sent over the network.
