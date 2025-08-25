@@ -204,7 +204,7 @@ mod tests {
         span_fixture,
     };
     use crate::core::ArrayLookupTable;
-    use crate::network::mock::noop_network::NoopNetwork;
+    use crate::network::{MockNetwork, Network};
 
     #[test]
     fn test_base_node() {
@@ -214,7 +214,12 @@ mod tests {
             id,
             mem_vec,
             lt: Box::new(ArrayLookupTable::new(&span_fixture())),
-            net: Box::new(NoopNetwork::new()),
+            net: Box::new({
+                let mut mock = MockNetwork::new();
+                mock.expect_register_processor().returning(|_| Ok(()));
+                mock.expect_clone_box().returning(|| Box::new(MockNetwork::new()));
+                mock
+            }),
         };
         assert_eq!(node.get_identifier(), &id);
         assert_eq!(node.get_membership_vector(), &mem_vec);
