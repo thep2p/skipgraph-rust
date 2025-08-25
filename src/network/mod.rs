@@ -41,6 +41,11 @@ pub trait Network: Send + Sync {
     /// (e.g., using Arc for shared ownership). Changes made through one instance should be
     /// visible in all cloned instances. This is the standard cloning behavior for all
     /// Network implementations.
-    #[allow(dead_code)]
     fn clone_box(&self) -> Box<dyn Network>;
+}
+
+impl Clone for Box<dyn Network> {
+    fn clone(&self) -> Self {
+        self.clone_box()
+    }
 }
