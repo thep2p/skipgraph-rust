@@ -6,6 +6,7 @@ use crate::core::{
 use crate::node::Node;
 use std::fmt;
 use std::fmt::Formatter;
+use crate::network::{MessageProcessor, Network};
 
 // TODO: Remove #[allow(dead_code)] once BaseNode is used in production code.
 #[allow(dead_code)]
@@ -14,6 +15,7 @@ pub(crate) struct BaseNode {
     id: Identifier,
     mem_vec: MembershipVector,
     lt: Box<dyn LookupTable>,
+    net: Box<dyn Network>,
 }
 
 impl Node for BaseNode {
@@ -143,8 +145,11 @@ impl BaseNode {
     /// Create a new `BaseNode` with the provided identifier, membership vector
     /// and lookup table.
     #[cfg(test)]
-    pub(crate) fn new(id: Identifier, mem_vec: MembershipVector, lt: Box<dyn LookupTable>) -> Self {
-        BaseNode { id, mem_vec, lt }
+    pub(crate) fn new(id: Identifier, mem_vec: MembershipVector, lt: Box<dyn LookupTable>, net: Box<dyn Network>) -> Self {
+        let clone_net = net.clone();
+        let mut node = BaseNode { id, mem_vec, lt, net};
+        clone_net.register_processor(node.clone() as MessageProcessor).map_err(|e| anyhow!(Err("could not register node in network: {}, e"))).unwrap();
+        node
     }
 }
 
@@ -173,6 +178,7 @@ impl Clone for BaseNode {
             id: self.id,
             mem_vec: self.mem_vec,
             lt: self.lt.clone(),
+            net: self.net.clone(),
         }
     }
 }
