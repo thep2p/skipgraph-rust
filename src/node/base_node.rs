@@ -204,7 +204,16 @@ mod tests {
         span_fixture,
     };
     use crate::core::ArrayLookupTable;
-    use crate::network::{MockNetwork, Network};
+    use crate::network::NetworkMock;
+    use unimock::*;
+
+    // Generic helper for creating network mocks - reusable across entire codebase
+    fn create_network_mock() -> Unimock {
+        Unimock::new((
+            NetworkMock::register_processor.each_call(matching!(_)).answers(&|_, _| Ok(())),
+            NetworkMock::clone_box.each_call(matching!()).answers(&|mock| Box::new(mock.clone())),
+        ))
+    }
 
     #[test]
     fn test_base_node() {
@@ -214,12 +223,7 @@ mod tests {
             id,
             mem_vec,
             lt: Box::new(ArrayLookupTable::new(&span_fixture())),
-            net: Box::new({
-                let mut mock = MockNetwork::new();
-                mock.expect_register_processor().returning(|_| Ok(()));
-                mock.expect_clone_box().returning(|| Box::new(MockNetwork::new()));
-                mock
-            }),
+            net: Box::new(Unimock::new(())), // No expectations needed for direct struct construction
         };
         assert_eq!(node.get_identifier(), &id);
         assert_eq!(node.get_membership_vector(), &mem_vec);

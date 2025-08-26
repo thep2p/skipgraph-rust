@@ -1,7 +1,6 @@
 pub mod mock;
 mod processor;
 
-use mockall::automock;
 use crate::core::Identifier;
 #[allow(unused)]
 pub use processor::MessageProcessor;
@@ -27,7 +26,7 @@ pub trait MessageProcessorCore: Send + Sync {
 }
 
 /// Network trait defines the interface for a network service that can send and receive messages.
-#[automock]
+#[unimock::unimock(api=NetworkMock)]
 pub trait Network: Send + Sync {
     /// Sends a message to the network.
     fn send_message(&self, message: Message) -> anyhow::Result<()>;

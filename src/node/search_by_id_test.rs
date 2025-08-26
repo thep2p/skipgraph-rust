@@ -15,7 +15,16 @@ use crate::node::Node;
 use anyhow::anyhow;
 use rand::Rng;
 use std::sync::Arc;
-use crate::network::{MockNetwork, Network};
+use crate::network::NetworkMock;
+use unimock::*;
+
+// Generic helper for creating network mocks - reusable across entire codebase
+fn create_network_mock() -> Unimock {
+    Unimock::new((
+        NetworkMock::register_processor.each_call(matching!(_)).answers(&|_, _| Ok(())),
+        NetworkMock::clone_box.each_call(matching!()).answers(&|mock| Box::new(mock.clone())),
+    ))
+}
 
 // TODO: move other tests from base_node.rs here
 /// Tests fallback behavior of `search_by_id` when no neighbors exist.
@@ -30,12 +39,7 @@ fn test_search_by_id_singleton_fallback() {
         id,
         mem_vec,
         Box::new(ArrayLookupTable::new(&span_fixture())),
-        Box::new({
-        let mut mock = MockNetwork::new();
-        mock.expect_register_processor().returning(|_| Ok(()));
-        mock.expect_clone_box().returning(|| Box::new(MockNetwork::new()));
-        mock
-    }),
+        Box::new(create_network_mock()),
     ).expect("Failed to create BaseNode");
 
     // Left and right searches for identifiers 5 and 15
@@ -82,12 +86,7 @@ fn test_search_by_id_found_left_direction() {
             random_identifier(),
             random_membership_vector(),
             Box::new(lt.clone()),
-            Box::new({
-        let mut mock = MockNetwork::new();
-        mock.expect_register_processor().returning(|_| Ok(()));
-        mock.expect_clone_box().returning(|| Box::new(MockNetwork::new()));
-        mock
-    }),
+            Box::new(create_network_mock()),
         ).expect("Failed to create BaseNode");
 
         let direction = Direction::Left;
@@ -138,12 +137,7 @@ fn test_search_by_id_found_right_direction() {
             random_identifier(),
             random_membership_vector(),
             Box::new(lt.clone()),
-            Box::new({
-        let mut mock = MockNetwork::new();
-        mock.expect_register_processor().returning(|_| Ok(()));
-        mock.expect_clone_box().returning(|| Box::new(MockNetwork::new()));
-        mock
-    }),
+            Box::new(create_network_mock()),
         ).expect("Failed to create BaseNode");
 
         let actual_result = node.search_by_id(&req).unwrap();
@@ -209,12 +203,7 @@ fn test_search_by_id_not_found_left_direction() {
             random_identifier(),
             random_membership_vector(),
             Box::new(lt.clone()),
-            Box::new({
-        let mut mock = MockNetwork::new();
-        mock.expect_register_processor().returning(|_| Ok(()));
-        mock.expect_clone_box().returning(|| Box::new(MockNetwork::new()));
-        mock
-    }),
+            Box::new(create_network_mock()),
         ).expect("Failed to create BaseNode");
 
         let direction = Direction::Left;
@@ -275,12 +264,7 @@ fn test_search_by_id_not_found_right_direction() {
             random_identifier(),
             random_membership_vector(),
             Box::new(lt.clone()),
-            Box::new({
-        let mut mock = MockNetwork::new();
-        mock.expect_register_processor().returning(|_| Ok(()));
-        mock.expect_clone_box().returning(|| Box::new(MockNetwork::new()));
-        mock
-    }),
+            Box::new(create_network_mock()),
         ).expect("Failed to create BaseNode");
 
         let direction = Direction::Right;
@@ -314,12 +298,7 @@ fn test_search_by_id_exact_result() {
         random_identifier(),
         random_membership_vector(),
         Box::new(lt.clone()),
-        Box::new({
-        let mut mock = MockNetwork::new();
-        mock.expect_register_processor().returning(|_| Ok(()));
-        mock.expect_clone_box().returning(|| Box::new(MockNetwork::new()));
-        mock
-    }),
+        Box::new(create_network_mock()),
     ).expect("Failed to create BaseNode");
 
     // This test should ensure that when the exact target is found, it returns the correct level and identifier.
@@ -361,16 +340,14 @@ fn test_search_by_id_concurrent_found_left_direction() {
     let lt = random_lookup_table_with_extremes(LOOKUP_TABLE_LEVELS);
     let target = random_identifier();
 
-    // Inline mock - Go-like simplicity
-    let mut mock_net = MockNetwork::new();
-    mock_net.expect_register_processor().returning(|_| Ok(()));
-    mock_net.expect_clone_box().returning(|| Box::new(MockNetwork::new()));
+    // 1-liner with TRUE shallow cloning + full mocking features!
+    let mock = create_network_mock();
     
     let node = BaseNode::new(
         random_identifier(),
         random_membership_vector(),
         Box::new(lt.clone()),
-        Box::new(mock_net),
+        Box::new(mock),
     ).expect("Failed to create BaseNode");
 
     // Ensure the target is not the same as the node's identifier
@@ -452,12 +429,7 @@ fn test_search_by_id_concurrent_right_direction() {
         random_identifier(),
         random_membership_vector(),
         Box::new(lt.clone()),
-        Box::new({
-        let mut mock = MockNetwork::new();
-        mock.expect_register_processor().returning(|_| Ok(()));
-        mock.expect_clone_box().returning(|| Box::new(MockNetwork::new()));
-        mock
-    }),
+        Box::new(create_network_mock()),
     ).expect("Failed to create BaseNode");
 
     // Ensure the target is not the same as the node's identifier
@@ -566,12 +538,7 @@ fn test_search_by_id_error_propagation() {
         random_identifier(),
         random_membership_vector(),
         Box::new(MockErrorLookupTable),
-        Box::new({
-        let mut mock = MockNetwork::new();
-        mock.expect_register_processor().returning(|_| Ok(()));
-        mock.expect_clone_box().returning(|| Box::new(MockNetwork::new()));
-        mock
-    }),
+        Box::new(create_network_mock()),
     ).expect("Failed to create BaseNode");
 
     // Create a random search request (any search request will return an error as
