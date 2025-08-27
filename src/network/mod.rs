@@ -14,7 +14,7 @@ pub enum Payload {
 }
 
 /// Message struct represents a message that can be sent over the network.
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct Message {
     pub payload: Payload,
     pub target_node_id: Identifier,

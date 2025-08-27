@@ -173,10 +173,7 @@ impl Node for BaseNode {
 impl MessageProcessorCore for BaseNode {
     fn process_incoming_message(&self, message: Message) -> anyhow::Result<()> {
         let _enter = self.span.enter();
-        tracing::trace!(
-            "Processing incoming message with target_node_id: {:?}",
-            message.target_node_id
-        );
+        tracing::trace!("Processing incoming message with target_node_id");
 
         match message.payload {
             IdSearchRequest(req) => {
@@ -188,10 +185,9 @@ impl MessageProcessorCore for BaseNode {
                 );
 
                 let res = self.search_by_id(&req).map_err(|e| anyhow!("failed to perform search by id {}", e))?;
-                let response_target = message.source_node_id.unwrap_or(message.target_node_id);
                 let response_message = Message {
                     payload: IdSearchResponse(res),
-                    target_node_id: response_target,
+                    target_node_id: message.source_node_id.unwrap_or(self.id),
                     source_node_id: Some(self.id),
                 };
 

@@ -30,6 +30,7 @@ mod tests {
     use super::*;
     use std::sync::atomic::{AtomicUsize, Ordering};
     use crate::core::Identifier;
+    use crate::core::testutil::fixtures::random_identifier;
     use crate::network::Payload;
     
     // A mock implementation of MessageProcessorCore that counts the number of processed messages.
@@ -67,7 +68,7 @@ mod tests {
 
         let test_message = Message {
             payload: Payload::TestMessage("test".to_string()),
-            target_node_id: Identifier::from_bytes(&[0; 32]).unwrap(),
+            target_node_id: random_identifier(),
             source_node_id: None,
         };
 
@@ -78,7 +79,7 @@ mod tests {
 
         let test_message2 = Message {
             payload: Payload::TestMessage("test2".to_string()),
-            target_node_id: Identifier::from_bytes(&[1; 32]).unwrap(),
+            target_node_id: random_identifier(),
             source_node_id: None,
         };
 
