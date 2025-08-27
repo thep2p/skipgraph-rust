@@ -14,9 +14,10 @@ use crate::core::{
 use crate::node::Node;
 use anyhow::anyhow;
 use rand::Rng;
-use std::sync::Arc;
-use crate::network::NetworkMock;
+use crate::network::{NetworkMock, Message, MessageProcessor, Payload, Network};
+use crate::network::mock::hub::NetworkHub;
 use unimock::*;
+use std::sync::{Arc, Mutex};
 
 // TODO: move other tests from base_node.rs here
 /// Tests fallback behavior of `search_by_id` when no neighbors exist.
@@ -60,7 +61,7 @@ fn test_search_by_id_singleton_fallback() {
 /// Test that returns the correct candidate when searching in the left direction,
 /// where the smallest identifier greater than or equal to the target should be returned.
 #[test]
-fn test_search_by_id_found_left_direction() {
+fn test_search_by_id_found_left_direction(){
     for lvl in 0..LOOKUP_TABLE_LEVELS {
         let lt = random_lookup_table_with_extremes(LOOKUP_TABLE_LEVELS);
         let target = random_identifier();
@@ -611,4 +612,125 @@ fn test_search_by_id_error_propagation() {
         error_msg.contains("Simulated lookup table error"),
         "Error message '{error_msg}' doesn't contain expected text"
     );
+}
+
+/// Test that verifies search_by_id functionality through message processing with mock networking.
+/// This is a variation of test_search_by_id_found_left_direction that treats the node as a MessageProcessor
+/// and verifies that it correctly processes IdSearchRequest messages and sends IdSearchResponse messages.
+#[test]
+fn test_search_by_id_message_processing_left_direction() {
+    for lvl in 0..LOOKUP_TABLE_LEVELS {
+        let lt = random_lookup_table_with_extremes(LOOKUP_TABLE_LEVELS);
+        let target = random_identifier();
+        
+        // Generate a random identifier greater than the target to ensure we have a candidate
+        // Puts the candidate in the left direction at zero level
+        let safe_neighbor = random_identifier_greater_than(&target);
+        lt.update_entry(
+            Identity::new(
+                &safe_neighbor,
+                &random_membership_vector(),
+                random_address(),
+            ),
+            0,
+            Direction::Left,
+        )
+        .expect("Failed to update entry in lookup table");
+        
+        // Create network hub and two mock networks: one for the node being tested, one for the sender
+        let hub = NetworkHub::new();
+        let node_id = random_identifier();
+        let sender_id = random_identifier();
+        
+        // Create mock network for the node being tested
+        let node_network = NetworkHub::new_mock_network(hub.clone(), node_id)
+            .expect("Failed to create mock network for node");
+        
+        // Create mock network for the sender (to capture responses)
+        let sender_network = NetworkHub::new_mock_network(hub.clone(), sender_id)
+            .expect("Failed to create mock network for sender");
+        
+        // Create the BaseNode with mock network
+        let node = BaseNode::new(
+            span_fixture(),
+            node_id,
+            random_membership_vector(),
+            Box::new(lt.clone()),
+            Box::new((*node_network).clone()),
+        ).expect("Failed to create BaseNode");
+        
+        // Create MessageProcessor from the BaseNode and register it
+        let message_processor = MessageProcessor::new(Box::new(node));
+        node_network.register_processor(message_processor)
+            .expect("Failed to register message processor");
+        
+        // Mock processor to capture responses sent back to the sender
+        struct ResponseCapture {
+            responses: Arc<Mutex<Vec<Message>>>,
+        }
+        
+        impl Clone for ResponseCapture {
+            fn clone(&self) -> Self {
+                ResponseCapture {
+                    responses: Arc::clone(&self.responses),
+                }
+            }
+        }
+        
+        impl crate::network::MessageProcessorCore for ResponseCapture {
+            fn process_incoming_message(&self, message: Message) -> anyhow::Result<()> {
+                self.responses.lock().unwrap().push(message);
+                Ok(())
+            }
+        }
+        
+        let response_capture = ResponseCapture {
+            responses: Arc::new(Mutex::new(Vec::new())),
+        };
+        let response_capture_clone = response_capture.clone();
+        
+        let sender_processor = MessageProcessor::new(Box::new(response_capture));
+        sender_network.register_processor(sender_processor)
+            .expect("Failed to register sender processor");
+        
+        // Create and send the search request message
+        let search_request = IdSearchReq::new(target, lvl, Direction::Left);
+        let request_message = Message {
+            payload: Payload::IdSearchRequest(search_request.clone()),
+            target_node_id: node_id,  // Send to the node being tested
+            source_node_id: Some(sender_id),  // Response should go back to sender
+        };
+        
+        // Send the message from sender to node
+        sender_network.send_message(request_message)
+            .expect("Failed to send request message");
+        
+        // Verify that exactly one response message was received by the sender
+        let responses = response_capture_clone.responses.lock().unwrap();
+        assert_eq!(responses.len(), 1, "Expected exactly one response message");
+        
+        let response_message = &responses[0];
+        assert_eq!(response_message.target_node_id, sender_id,
+                   "Response should be sent back to the original sender");
+        
+        // Verify the response payload
+        match &response_message.payload {
+            Payload::IdSearchResponse(response) => {
+                // Calculate expected result using the same logic as the original test
+                let (expected_lvl, expected_identity) = lt
+                    .left_neighbors()
+                    .unwrap()
+                    .into_iter()
+                    .filter(|(l, id)| *l <= search_request.level() && id.id() >= search_request.target())
+                    .min_by_key(|(_, id)| *id.id())
+                    .unwrap();
+                
+                assert_eq!(expected_lvl, response.termination_level(),
+                          "Response should have correct termination level");
+                assert_eq!(*expected_identity.id(), *response.result(),
+                          "Response should have correct result identifier");
+            },
+            _ => panic!("Expected IdSearchResponse payload, got: {:?}", response_message.payload),
+        }
+    }
 }

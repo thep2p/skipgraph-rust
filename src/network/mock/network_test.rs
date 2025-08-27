@@ -59,6 +59,7 @@ fn test_mock_message_processor() {
     let message = Message {
         payload: TestMessage("Hello, World!".to_string()),
         target_node_id: identifier,
+        source_node_id: None,
     };
 
     assert!(!core_processor.has_seen("Hello, World!"));
@@ -91,6 +92,7 @@ fn test_hub_route_message() {
     let message = Message {
         payload: TestMessage("Test message".to_string()),
         target_node_id: id_1,
+        source_node_id: Some(id_2),
     };
 
     assert!(!core_proc_1.has_seen("Test message"));
@@ -115,6 +117,7 @@ fn test_network_hub_shallow_clone() {
     let message = Message {
         payload: TestMessage("Shallow clone test".to_string()),
         target_node_id: identifier,
+        source_node_id: None,
     };
     
     // Register a processor on the mock network
@@ -169,6 +172,7 @@ fn test_concurrent_message_sending() {
             let message = Message {
                 payload: TestMessage(content),
                 target_node_id: id_1_copy,
+                source_node_id: None,
             };
 
             // Wait for all threads to reach this point
@@ -217,6 +221,7 @@ fn test_mock_network_processor_sharing_between_clones() {
     let message = Message {
         payload: TestMessage("Shared processor test".to_string()),
         target_node_id: identifier,
+        source_node_id: None,
     };
     
     // Verify the message hasn't been seen yet
@@ -249,6 +254,7 @@ fn test_mock_network_processor_sharing_clone_to_original() {
     let message = Message {
         payload: TestMessage("Clone to original test".to_string()),
         target_node_id: identifier,
+        source_node_id: None,
     };
     
     // Verify the message hasn't been seen yet
@@ -275,11 +281,13 @@ fn test_message_processor_clone_functionality() {
     let message1 = Message {
         payload: TestMessage("Processor clone test 1".to_string()),
         target_node_id: identifier,
+        source_node_id: None,
     };
     
     let message2 = Message {
         payload: TestMessage("Processor clone test 2".to_string()),
         target_node_id: identifier,
+        source_node_id: None,
     };
     
     // Verify messages haven't been seen yet

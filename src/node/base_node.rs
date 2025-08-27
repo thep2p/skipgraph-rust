@@ -188,9 +188,11 @@ impl MessageProcessorCore for BaseNode {
                 );
 
                 let res = self.search_by_id(&req).map_err(|e| anyhow!("failed to perform search by id {}", e))?;
+                let response_target = message.source_node_id.unwrap_or(message.target_node_id);
                 let response_message = Message {
                     payload: IdSearchResponse(res),
-                    target_node_id: message.target_node_id, // Assuming we respond to the sender
+                    target_node_id: response_target,
+                    source_node_id: Some(self.id),
                 };
 
                 tracing::trace!(

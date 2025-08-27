@@ -6,7 +6,7 @@ use crate::core::{Identifier, IdSearchReq, IdSearchRes};
 pub use processor::MessageProcessor;
 
 /// Payload enum defines the semantics of the message payload that can be sent over the network.
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum Payload {
     TestMessage(String), // A payload for testing purposes, it is a simple string message, and is not used in production.
     IdSearchRequest(IdSearchReq), // A payload representing an identifier search request.
@@ -14,9 +14,11 @@ pub enum Payload {
 }
 
 /// Message struct represents a message that can be sent over the network.
+#[derive(Clone)]
 pub struct Message {
     pub payload: Payload,
     pub target_node_id: Identifier,
+    pub source_node_id: Option<Identifier>,
 }
 
 /// Core message processing logic that implementations must provide.

@@ -68,6 +68,7 @@ mod tests {
         let test_message = Message {
             payload: Payload::TestMessage("test".to_string()),
             target_node_id: Identifier::from_bytes(&[0; 32]).unwrap(),
+            source_node_id: None,
         };
 
         assert_eq!(counter_ref.load(Ordering::SeqCst), 0);
@@ -78,6 +79,7 @@ mod tests {
         let test_message2 = Message {
             payload: Payload::TestMessage("test2".to_string()),
             target_node_id: Identifier::from_bytes(&[1; 32]).unwrap(),
+            source_node_id: None,
         };
 
         processor_clone.process_incoming_message(test_message2).unwrap();
