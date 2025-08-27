@@ -43,6 +43,7 @@ impl MessageProcessorCore for MockMessageProcessor {
                 self.inner.write().unwrap().seen.insert(content);
                 Ok(())
             }
+            _ => Err(anyhow::anyhow!("MockMessageProcessor only handles TestMessage payloads")),
         }
     }
 }

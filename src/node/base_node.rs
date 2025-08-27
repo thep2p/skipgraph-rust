@@ -161,7 +161,7 @@ impl MessageProcessorCore for BaseNode {
             IdSearchResponse(_res) => {
                 // Handle the response (e.g., update state, notify waiting tasks, etc.)
                 // For now, we just log it.
-                println!("Received IdSearchResponse: {:?}", _res);
+                println!("Received IdSearchResponse: {_res:?}");
                 Ok(())
             }
             _ => Err(anyhow!("unsupported message payload type")),

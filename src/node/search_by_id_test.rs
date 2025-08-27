@@ -15,7 +15,6 @@ use crate::node::Node;
 use anyhow::anyhow;
 use rand::Rng;
 use std::sync::Arc;
-use tracing::span;
 use crate::network::NetworkMock;
 use unimock::*;
 
