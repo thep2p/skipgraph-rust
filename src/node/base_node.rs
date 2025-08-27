@@ -1,6 +1,6 @@
 use crate::core::model::direction::Direction;
 use crate::core::{
-    Identifier, IdentifierSearchRequest, IdentifierSearchResult, LookupTable, MembershipVector,
+    Identifier, IdSearchReq, IdSearchRes, LookupTable, MembershipVector,
 };
 #[cfg(test)] // TODO: Remove once BaseNode is used in production code.
 use crate::network::MessageProcessor;
@@ -9,6 +9,8 @@ use crate::node::Node;
 use anyhow::anyhow;
 use std::fmt;
 use std::fmt::Formatter;
+use tracing::Span;
+use crate::network::Payload::{IdSearchRequest, IdSearchResponse};
 
 // TODO: Remove #[allow(dead_code)] once BaseNode is used in production code.
 #[allow(dead_code)]
@@ -18,6 +20,7 @@ pub(crate) struct BaseNode {
     mem_vec: MembershipVector,
     lt: Box<dyn LookupTable>,
     net: Box<dyn Network>,
+    span: Span,
 }
 
 impl Node for BaseNode {
@@ -37,7 +40,7 @@ impl Node for BaseNode {
     /// identifier if no matches are found.
     ///
     /// # Arguments
-    /// - `req`: A reference to an [`IdentifierSearchRequest`] which contains the search criteria,
+    /// - `req`: A reference to an [`IdSearchReq`] which contains the search criteria,
     ///   including the target identifier, the direction of the search (`Left` or `Right`), and
     ///   the level up to which the search should proceed.
     ///
@@ -77,8 +80,8 @@ impl Node for BaseNode {
     /// - `matched_id`: The identifier of the closest match or fallback identifier.
     fn search_by_id(
         &self,
-        req: &IdentifierSearchRequest,
-    ) -> anyhow::Result<IdentifierSearchResult> {
+        req: &IdSearchReq,
+    ) -> anyhow::Result<IdSearchRes> {
         // Collect neighbors from levels <= req.level in req.direction
         let candidates: Result<Vec<_>, _> = (0..=req.level())
             .filter_map(|lvl| match self.lt.get_entry(lvl, req.direction()) {
@@ -115,14 +118,14 @@ impl Node for BaseNode {
         match result {
             Some((id, level)) => {
                 // If a candidate is found, return it
-                Ok(IdentifierSearchResult::new(*req.target(), level, id))
+                Ok(IdSearchRes::new(*req.target(), level, id))
             }
             None => {
                 // No valid neighbors were found at any level. As specified in
                 // Aspnes & Shah's skip graph design, the search must fall back
                 // to the caller's own identifier at level 0. See
                 // `search_fallback_test.rs` for edge-case validation.
-                Ok(IdentifierSearchResult::new(
+                Ok(IdSearchRes::new(
                     *req.target(),
                     0,
                     *self.get_identifier(),
@@ -133,8 +136,8 @@ impl Node for BaseNode {
 
     fn search_by_mem_vec(
         &self,
-        _req: &IdentifierSearchRequest,
-    ) -> anyhow::Result<IdentifierSearchResult> {
+        _req: &IdSearchReq,
+    ) -> anyhow::Result<IdSearchRes> {
         todo!()
     }
 
@@ -144,10 +147,25 @@ impl Node for BaseNode {
 }
 
 impl MessageProcessorCore for BaseNode {
-    fn process_incoming_message(&self, _message: Message) -> anyhow::Result<()> {
-        // For now, just return Ok since this is just being implemented to fix the compile error
-        // In the future, this would process the incoming message based on payload type
-        Ok(())
+    fn process_incoming_message(&self, message: Message) -> anyhow::Result<()> {
+        match message.payload {
+            IdSearchRequest(req) => {
+                let res = self.search_by_id(&req).map_err(|e| anyhow!("failed to perform search by id {}", e))?;
+                let response_message = Message {
+                    payload: IdSearchResponse(res),
+                    target_node_id: message.target_node_id, // Assuming we respond to the sender
+                };
+                self.net.send_message(response_message).map_err(|e| anyhow!("failed to send response message for search by id: {}", e))?;
+                Ok(())
+            }
+            IdSearchResponse(_res) => {
+                // Handle the response (e.g., update state, notify waiting tasks, etc.)
+                // For now, we just log it.
+                println!("Received IdSearchResponse: {:?}", _res);
+                Ok(())
+            }
+            _ => Err(anyhow!("unsupported message payload type")),
+        }
     }
 }
 
@@ -156,6 +174,7 @@ impl BaseNode {
     /// and lookup table.
     #[cfg(test)] // TODO: Remove once BaseNode is used in production code.
     pub(crate) fn new(
+        span: Span,
         id: Identifier,
         mem_vec: MembershipVector,
         lt: Box<dyn LookupTable>,
@@ -167,6 +186,7 @@ impl BaseNode {
             mem_vec,
             lt,
             net,
+            span,
         };
         // Create a MessageProcessor from this node, instead of casting directly
         let processor = MessageProcessor::new(Box::new(node.clone()));
@@ -203,6 +223,7 @@ impl Clone for BaseNode {
             mem_vec: self.mem_vec,
             lt: self.lt.clone(),
             net: self.net.clone(),
+            span: self.span.clone(),
         }
     }
 }
@@ -225,6 +246,7 @@ mod tests {
             mem_vec,
             lt: Box::new(ArrayLookupTable::new(&span_fixture())),
             net: Box::new(Unimock::new(())), // No expectations needed for direct struct construction
+            span: span_fixture(),
         };
         assert_eq!(node.get_identifier(), &id);
         assert_eq!(node.get_membership_vector(), &mem_vec);

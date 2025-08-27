@@ -1,7 +1,7 @@
 pub mod mock;
 mod processor;
 
-use crate::core::Identifier;
+use crate::core::{Identifier, IdSearchReq, IdSearchRes};
 #[allow(unused)]
 pub use processor::MessageProcessor;
 
@@ -9,6 +9,8 @@ pub use processor::MessageProcessor;
 #[derive(Debug)]
 pub enum Payload {
     TestMessage(String), // A payload for testing purposes, it is a simple string message, and is not used in production.
+    IdSearchRequest(IdSearchReq), // A payload representing an identifier search request.
+    IdSearchResponse(IdSearchRes) // A payload representing an identifier search response.
 }
 
 /// Message struct represents a message that can be sent over the network.
