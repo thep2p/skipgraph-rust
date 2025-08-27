@@ -82,6 +82,14 @@ impl Node for BaseNode {
         &self,
         req: &IdSearchReq,
     ) -> anyhow::Result<IdSearchRes> {
+        let _enter = self.span.enter();
+        tracing::trace!(
+            "Starting search_by_id for target {:?}, direction {:?}, max_level {}",
+            req.target(),
+            req.direction(),
+            req.level()
+        );
+
         // Collect neighbors from levels <= req.level in req.direction
         let candidates: Result<Vec<_>, _> = (0..=req.level())
             .filter_map(|lvl| match self.lt.get_entry(lvl, req.direction()) {
@@ -96,6 +104,12 @@ impl Node for BaseNode {
             .collect();
 
         let candidates = candidates?;
+
+        tracing::trace!(
+            "Found {} candidates across levels 0-{}",
+            candidates.len(),
+            req.level()
+        );
 
         // Filter candidates based on the direction
         let result = match req.direction() {
@@ -118,13 +132,23 @@ impl Node for BaseNode {
         match result {
             Some((id, level)) => {
                 // If a candidate is found, return it
-                Ok(IdSearchRes::new(*req.target(), level, id))
+                let search_result = IdSearchRes::new(*req.target(), level, id);
+                tracing::trace!(
+                    "Search successful: found match {:?} at level {}",
+                    id,
+                    level
+                );
+                Ok(search_result)
             }
             None => {
                 // No valid neighbors were found at any level. As specified in
                 // Aspnes & Shah's skip graph design, the search must fall back
                 // to the caller's own identifier at level 0. See
                 // `search_fallback_test.rs` for edge-case validation.
+                tracing::trace!(
+                    "Search fallback: no valid candidates found, returning own identifier {:?}",
+                    self.get_identifier()
+                );
                 Ok(IdSearchRes::new(
                     *req.target(),
                     0,
@@ -148,23 +172,51 @@ impl Node for BaseNode {
 
 impl MessageProcessorCore for BaseNode {
     fn process_incoming_message(&self, message: Message) -> anyhow::Result<()> {
+        let _enter = self.span.enter();
+        tracing::trace!(
+            "Processing incoming message with target_node_id: {:?}",
+            message.target_node_id
+        );
+
         match message.payload {
             IdSearchRequest(req) => {
+                tracing::trace!(
+                    "Received IdSearchRequest for target {:?}, direction {:?}, level {}",
+                    req.target(),
+                    req.direction(),
+                    req.level()
+                );
+
                 let res = self.search_by_id(&req).map_err(|e| anyhow!("failed to perform search by id {}", e))?;
                 let response_message = Message {
                     payload: IdSearchResponse(res),
                     target_node_id: message.target_node_id, // Assuming we respond to the sender
                 };
+
+                tracing::trace!(
+                    "Sending IdSearchResponse with result {:?} at level {}",
+                    res.result(),
+                    res.termination_level()
+                );
+
                 self.net.send_message(response_message).map_err(|e| anyhow!("failed to send response message for search by id: {}", e))?;
                 Ok(())
             }
-            IdSearchResponse(_res) => {
+            IdSearchResponse(res) => {
                 // Handle the response (e.g., update state, notify waiting tasks, etc.)
                 // For now, we just log it.
-                println!("Received IdSearchResponse: {_res:?}");
+                tracing::trace!(
+                    "Received IdSearchResponse: target {:?}, result {:?}, level {}",
+                    res.target(),
+                    res.result(),
+                    res.termination_level()
+                );
                 Ok(())
             }
-            _ => Err(anyhow!("unsupported message payload type")),
+            _ => {
+                tracing::warn!("Received unsupported message payload type");
+                Err(anyhow!("unsupported message payload type"))
+            }
         }
     }
 }
@@ -174,25 +226,47 @@ impl BaseNode {
     /// and lookup table.
     #[cfg(test)] // TODO: Remove once BaseNode is used in production code.
     pub(crate) fn new(
-        span: Span,
+        parent_span: Span,
         id: Identifier,
         mem_vec: MembershipVector,
         lt: Box<dyn LookupTable>,
         net: Box<dyn Network>,
     ) -> anyhow::Result<Self> {
         let clone_net = net.clone();
+        let span = tracing::span!(parent: parent_span, tracing::Level::TRACE, "base_node");
+        let _enter = span.enter();
+        
+        tracing::trace!(
+            "Creating BaseNode with id {:?}, mem_vec {:?}",
+            id,
+            mem_vec
+        );
+
         let node = BaseNode {
             id,
             mem_vec,
             lt,
             net,
-            span,
+            span: span.clone(),
         };
+
         // Create a MessageProcessor from this node, instead of casting directly
         let processor = MessageProcessor::new(Box::new(node.clone()));
+        
+        tracing::trace!(
+            "Registering BaseNode {:?} as message processor in network",
+            id
+        );
+
         clone_net
             .register_processor(processor)
             .map_err(|e| anyhow!("could not register node in network: {}", e))?;
+
+        tracing::trace!(
+            "Successfully created and registered BaseNode {:?}",
+            id
+        );
+
         Ok(node)
     }
 }
