@@ -361,7 +361,7 @@ fn test_search_by_id_concurrent_found_left_direction() {
     let lt = random_lookup_table_with_extremes(LOOKUP_TABLE_LEVELS);
     let target = random_identifier();
 
-    // 1-liner with TRUE shallow cloning + full mocking features!
+    // Set up a mock network with shallow cloning and processor registration to simulate concurrent network interactions.
     let mock_net = Unimock::new((
         NetworkMock::register_processor.each_call(matching!(_)).answers(&|_, _| Ok(())),
         NetworkMock::clone_box.each_call(matching!()).answers(&|mock| Box::new(mock.clone())),
