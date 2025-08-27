@@ -9,9 +9,6 @@ use crate::node::Node;
 use anyhow::anyhow;
 use std::fmt;
 use std::fmt::Formatter;
-use crate::network::{Message, MessageProcessorCore, Network};
-#[cfg(test)] // TODO: Remove once BaseNode is used in production code.
-use crate::network::MessageProcessor;
 
 // TODO: Remove #[allow(dead_code)] once BaseNode is used in production code.
 #[allow(dead_code)]
