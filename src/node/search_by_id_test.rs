@@ -686,7 +686,7 @@ fn test_search_by_id_message_processing_left_direction() {
     // Create the search request message
     let search_request = IdSearchReq::new(target, 0, Direction::Left);
     let request_message = Message {
-        payload: Payload::IdSearchRequest(search_request.clone()),
+        payload: Payload::IdSearchRequest(search_request),
         target_node_id: node_id,
         source_node_id: Some(random_identifier()),
     };

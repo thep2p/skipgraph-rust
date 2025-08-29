@@ -1,6 +1,6 @@
+use crate::network::{Message, MessageProcessorCore};
 use anyhow::anyhow;
 use std::sync::{Arc, RwLock};
-use crate::network::{Message, MessageProcessorCore};
 
 /// A thread-safe wrapper that enforces internal thread-safety for message processors.
 /// This type guarantees that all message processing is properly synchronized.
@@ -19,7 +19,9 @@ impl MessageProcessor {
 
     /// Process an incoming message with guaranteed thread-safety.
     pub fn process_incoming_message(&self, message: Message) -> anyhow::Result<()> {
-        let core = self.core.read()
+        let core = self
+            .core
+            .read()
             .map_err(|_| anyhow!("Failed to acquire read lock on message processor"))?;
         core.process_incoming_message(message)
     }
@@ -28,11 +30,10 @@ impl MessageProcessor {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::sync::atomic::{AtomicUsize, Ordering};
-    use crate::core::Identifier;
     use crate::core::testutil::fixtures::random_identifier;
     use crate::network::Payload;
-    
+    use std::sync::atomic::{AtomicUsize, Ordering};
+
     // A mock implementation of MessageProcessorCore that counts the number of processed messages.
     struct MockMessageProcessorCore {
         counter: Arc<AtomicUsize>,
@@ -83,7 +84,9 @@ mod tests {
             source_node_id: None,
         };
 
-        processor_clone.process_incoming_message(test_message2).unwrap();
+        processor_clone
+            .process_incoming_message(test_message2)
+            .unwrap();
         assert_eq!(counter_ref.load(Ordering::SeqCst), 2);
     }
 }
