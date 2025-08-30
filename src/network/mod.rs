@@ -22,8 +22,8 @@ pub trait EventProcessorCore: Send + Sync {
     /// Arguments:
     /// * `origin_id`: The identifier of the node that sent the message.
     /// * `message`: The incoming message to be processed.
-    /// Returns:
-    /// * `Result<(), anyhow::Error>`: Returns Ok if the message was processed successfully, or an error if processing failed.
+    ///   Returns:
+    ///   * `Result<(), anyhow::Error>`: Returns Ok if the message was processed successfully, or an error if processing failed.
     fn process_incoming_event(&self, origin_id: Identifier, event: Event) -> anyhow::Result<()>;
 }
 
