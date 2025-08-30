@@ -84,7 +84,7 @@ impl Node for BaseNode {
     ) -> anyhow::Result<IdSearchRes> {
         let _enter = self.span.enter();
         tracing::trace!(
-            "Starting search_by_id for target {:?}, direction {:?}, max_level {}",
+            "starting search_by_id for target {:?}, direction {:?}, max_level {}",
             req.target(),
             req.direction(),
             req.level()
@@ -96,7 +96,7 @@ impl Node for BaseNode {
                 Ok(Some(identity)) => Some(Ok((*identity.id(), lvl))),
                 Ok(None) => None,
                 Err(e) => Some(Err(anyhow!(
-                    "Error while searching by id in level {}: {}",
+                    "error while searching by id in level {}: {}",
                     lvl,
                     e
                 ))),
@@ -106,7 +106,7 @@ impl Node for BaseNode {
         let candidates = candidates?;
 
         tracing::trace!(
-            "Found {} candidates across levels 0-{}",
+            "found {} candidates across levels 0-{}",
             candidates.len(),
             req.level()
         );
@@ -134,7 +134,7 @@ impl Node for BaseNode {
                 // If a candidate is found, return it
                 let search_result = IdSearchRes::new(*req.target(), level, id);
                 tracing::trace!(
-                    "Search successful: found match {:?} at level {}",
+                    "search successful: found match {:?} at level {}",
                     id,
                     level
                 );
@@ -146,7 +146,7 @@ impl Node for BaseNode {
                 // to the caller's own identifier at level 0. See
                 // `search_fallback_test.rs` for edge-case validation.
                 tracing::trace!(
-                    "Search fallback: no valid candidates found, returning own identifier {:?}",
+                    "search fallback: no valid candidates found, returning own identifier {:?}",
                     self.get_identifier()
                 );
                 Ok(IdSearchRes::new(
@@ -173,12 +173,12 @@ impl Node for BaseNode {
 impl MessageProcessorCore for BaseNode {
     fn process_incoming_message(&self, message: Message) -> anyhow::Result<()> {
         let _enter = self.span.enter();
-        tracing::trace!("Processing incoming message with target_node_id");
+        tracing::trace!("processing incoming message with target_node_id");
 
         match message.payload {
             IdSearchRequest(req) => {
                 tracing::trace!(
-                    "Received IdSearchRequest for target {:?}, direction {:?}, level {}",
+                    "received IdSearchRequest for target {:?}, direction {:?}, level {}",
                     req.target(),
                     req.direction(),
                     req.level()
@@ -192,7 +192,7 @@ impl MessageProcessorCore for BaseNode {
                 };
 
                 tracing::trace!(
-                    "Sending IdSearchResponse with result {:?} at level {}",
+                    "sending IdSearchResponse with result {:?} at level {}",
                     res.result(),
                     res.termination_level()
                 );
@@ -204,7 +204,7 @@ impl MessageProcessorCore for BaseNode {
                 // Handle the response (e.g., update state, notify waiting tasks, etc.)
                 // For now, we just log it.
                 tracing::trace!(
-                    "Received IdSearchResponse: target {:?}, result {:?}, level {}",
+                    "received IdSearchResponse: target {:?}, result {:?}, level {}",
                     res.target(),
                     res.result(),
                     res.termination_level()
@@ -212,7 +212,7 @@ impl MessageProcessorCore for BaseNode {
                 Ok(())
             }
             _ => {
-                tracing::warn!("Received unsupported message payload type");
+                tracing::warn!("received unsupported message payload type");
                 Err(anyhow!("unsupported message payload type"))
             }
         }
@@ -235,7 +235,7 @@ impl BaseNode {
         let _enter = span.enter();
         
         tracing::trace!(
-            "Creating BaseNode with id {:?}, mem_vec {:?}",
+            "creating BaseNode with id {:?}, mem_vec {:?}",
             id,
             mem_vec
         );
@@ -252,7 +252,7 @@ impl BaseNode {
         let processor = MessageProcessor::new(Box::new(node.clone()));
         
         tracing::trace!(
-            "Registering BaseNode {:?} as message processor in network",
+            "registering BaseNode {:?} as message processor in network",
             id
         );
 
@@ -261,7 +261,7 @@ impl BaseNode {
             .map_err(|e| anyhow!("could not register node in network: {}", e))?;
 
         tracing::trace!(
-            "Successfully created and registered BaseNode {:?}",
+            "successfully created and registered BaseNode {:?}",
             id
         );
 

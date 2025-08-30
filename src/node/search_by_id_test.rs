@@ -41,7 +41,7 @@ fn test_search_by_id_singleton_fallback() {
         Box::new(ArrayLookupTable::new(&span_fixture())),
         Box::new(mock_net),
     )
-    .expect("Failed to create BaseNode");
+    .expect("failed to create BaseNode");
 
     // Left and right searches for identifiers 5 and 15
     let cases = [
@@ -81,7 +81,7 @@ fn test_search_by_id_found_left_direction() {
             0,
             Direction::Left,
         )
-        .expect("Failed to update entry in lookup table");
+        .expect("failed to update entry in lookup table");
 
         let mock_net = Unimock::new((
             NetworkMock::register_processor
@@ -99,7 +99,7 @@ fn test_search_by_id_found_left_direction() {
             Box::new(lt.clone()),
             Box::new(mock_net),
         )
-        .expect("Failed to create BaseNode");
+        .expect("failed to create BaseNode");
 
         let direction = Direction::Left;
         let req = IdSearchReq::new(target, lvl, direction);
@@ -140,7 +140,7 @@ fn test_search_by_id_found_right_direction() {
             0,
             Direction::Right,
         )
-        .expect("Failed to update entry in lookup table");
+        .expect("failed to update entry in lookup table");
 
         let direction = Direction::Right;
         let req = IdSearchReq::new(target, lvl, direction);
@@ -161,7 +161,7 @@ fn test_search_by_id_found_right_direction() {
             Box::new(lt.clone()),
             Box::new(mock_net),
         )
-        .expect("Failed to create BaseNode");
+        .expect("failed to create BaseNode");
 
         let actual_result = node.search_by_id(&req).unwrap();
 
@@ -219,7 +219,7 @@ fn test_search_by_id_not_found_left_direction() {
                 lvl,
                 Direction::Left,
             )
-            .expect("Failed to update entry in lookup table");
+            .expect("failed to update entry in lookup table");
         }
 
         let mock_net = Unimock::new((
@@ -238,7 +238,7 @@ fn test_search_by_id_not_found_left_direction() {
             Box::new(lt.clone()),
             Box::new(mock_net),
         )
-        .expect("Failed to create BaseNode");
+        .expect("failed to create BaseNode");
 
         let direction = Direction::Left;
         let req = IdSearchReq::new(target, lvl, direction);
@@ -291,7 +291,7 @@ fn test_search_by_id_not_found_right_direction() {
                 lvl,
                 Direction::Right,
             )
-            .expect("Failed to update entry in lookup table");
+            .expect("failed to update entry in lookup table");
         }
 
         let mock_net = Unimock::new((
@@ -310,7 +310,7 @@ fn test_search_by_id_not_found_right_direction() {
             Box::new(lt.clone()),
             Box::new(mock_net),
         )
-        .expect("Failed to create BaseNode");
+        .expect("failed to create BaseNode");
 
         let direction = Direction::Right;
         let req = IdSearchReq::new(target, lvl, direction);
@@ -355,7 +355,7 @@ fn test_search_by_id_exact_result() {
         Box::new(lt.clone()),
         Box::new(mock_net),
     )
-    .expect("Failed to create BaseNode");
+    .expect("failed to create BaseNode");
 
     // This test should ensure that when the exact target is found, it returns the correct level and identifier.
     for lvl in 0..LOOKUP_TABLE_LEVELS {
@@ -413,7 +413,7 @@ fn test_search_by_id_concurrent_found_left_direction() {
         Box::new(lt.clone()),
         Box::new(mock_net),
     )
-    .expect("Failed to create BaseNode");
+    .expect("failed to create BaseNode");
 
     // Ensure the target is not the same as the node's identifier
     assert_ne!(&target, node.get_identifier());
@@ -506,7 +506,7 @@ fn test_search_by_id_concurrent_right_direction() {
         Box::new(lt.clone()),
         Box::new(mock_net),
     )
-    .expect("Failed to create BaseNode");
+    .expect("failed to create BaseNode");
 
     // Ensure the target is not the same as the node's identifier
     assert_ne!(&target, node.get_identifier());
@@ -589,7 +589,7 @@ fn test_search_by_id_error_propagation() {
         }
 
         fn get_entry(&self, _: usize, _: Direction) -> anyhow::Result<Option<Identity>> {
-            Err(anyhow!("Simulated lookup table error"))
+            Err(anyhow!("simulated lookup table error"))
         }
 
         fn equal(&self, _: &dyn LookupTable) -> bool {
@@ -626,7 +626,7 @@ fn test_search_by_id_error_propagation() {
         Box::new(MockErrorLookupTable),
         Box::new(mock_net),
     )
-    .expect("Failed to create BaseNode");
+    .expect("failed to create BaseNode");
 
     // Create a random search request (any search request will return an error as
     // the mock lookup table is designed to fail)
@@ -638,22 +638,22 @@ fn test_search_by_id_error_propagation() {
     // The search should fail with an error message that includes our simulated error
     assert!(
         result.is_err(),
-        "Expected an error but got a success result"
+        "expected an error but got a success result"
     );
 
-    // Check that the error message contains the expected text ("Error while searching by id in level")
+    // Check that the error message contains the expected text ("error while searching by id in level")
     // This error message is constructed in the search_by_id method
     let error_msg = result.unwrap_err().to_string();
     assert!(
-        error_msg.contains("Error while searching by id in level"),
-        "Error message '{error_msg}' doesn't contain expected text"
+        error_msg.contains("error while searching by id in level"),
+        "error message '{error_msg}' doesn't contain expected text"
     );
 
-    // Additionally, check that the error message contains the simulated lookup table error ("Simulated lookup table error")
+    // Additionally, check that the error message contains the simulated lookup table error ("simulated lookup table error")
     // This ensures that the error from the lookup table is propagated correctly
     assert!(
-        error_msg.contains("Simulated lookup table error"),
-        "Error message '{error_msg}' doesn't contain expected text"
+        error_msg.contains("simulated lookup table error"),
+        "error message '{error_msg}' doesn't contain expected text"
     );
 }
 
@@ -679,7 +679,7 @@ fn test_search_by_id_message_processing_left_direction() {
         0,
         Direction::Left,
     )
-    .expect("Failed to update entry in lookup table");
+    .expect("failed to update entry in lookup table");
     
     let node_id = random_identifier();
 
@@ -718,15 +718,15 @@ fn test_search_by_id_message_processing_left_direction() {
         Box::new(lt.clone()),
         Box::new(mock_net),
     )
-    .expect("Failed to create BaseNode");
+    .expect("failed to create BaseNode");
 
     // Process the request message directly through the node's MessageProcessorCore implementation
     node.process_incoming_message(request_message)
-        .expect("Failed to process request message");
+        .expect("failed to process request message");
     
     // Verify exactly one response message was sent
     let messages = sent_messages.lock().unwrap();
-    assert_eq!(messages.len(), 1, "Expected exactly one response message");
+    assert_eq!(messages.len(), 1, "expected exactly one response message");
 
     // Verify the response payload
     match &messages[0].payload {
@@ -745,16 +745,16 @@ fn test_search_by_id_message_processing_left_direction() {
             assert_eq!(
                 expected_lvl,
                 response.termination_level(),
-                "Response should have correct termination level"
+                "response should have correct termination level"
             );
             assert_eq!(
                 *expected_identity.id(),
                 *response.result(),
-                "Response should have correct result identifier"
+                "response should have correct result identifier"
             );
         }
         _ => panic!(
-            "Expected IdSearchResponse payload, got: {:?}",
+            "expected IdSearchResponse payload, got: {:?}",
             messages[0].payload
         ),
     }

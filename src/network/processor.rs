@@ -22,7 +22,7 @@ impl MessageProcessor {
         let core = self
             .core
             .read()
-            .map_err(|_| anyhow!("Failed to acquire read lock on message processor"))?;
+            .map_err(|_| anyhow!("failed to acquire read lock on message processor"))?;
         core.process_incoming_message(message)
     }
 }

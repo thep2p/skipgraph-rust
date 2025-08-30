@@ -29,11 +29,11 @@ impl NetworkHub {
         let mut networks = hub
             .networks
             .write()
-            .map_err(|_| anyhow!("Failed to acquire write lock on network hub"))?;
+            .map_err(|_| anyhow!("failed to acquire write lock on network hub"))?;
 
         if networks.contains_key(&identifier) {
             return Err(anyhow!(
-                "Network with identifier {} already exists",
+                "network with identifier {} already exists",
                 identifier
             ));
         }
@@ -48,16 +48,16 @@ impl NetworkHub {
         let networks = self
             .networks
             .read()
-            .map_err(|_| anyhow!("Failed to acquire read lock on network hub"))?;
+            .map_err(|_| anyhow!("failed to acquire read lock on network hub"))?;
 
         if let Some(network) = networks.get(&message.target_node_id) {
             network
                 .incoming_message(message)
-                .context("Failed to send message through network")?;
+                .context("failed to send message through network")?;
             Ok(())
         } else {
             Err(anyhow!(
-                "Network with identifier {} not found",
+                "network with identifier {} not found",
                 message.target_node_id
             ))
         }

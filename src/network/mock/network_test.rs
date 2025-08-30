@@ -84,7 +84,7 @@ fn test_hub_route_message() {
     let msg_proc_1 = MessageProcessor::new(Box::new(core_proc_1.clone()));
     mock_net_1
         .register_processor(msg_proc_1)
-        .expect("Failed to register message processor");
+        .expect("failed to register message processor");
 
     let id_2 = random_identifier();
     let mock_net_2 = NetworkHub::new_mock_network(hub, id_2).unwrap();
@@ -125,7 +125,7 @@ fn test_network_hub_shallow_clone() {
     let processor = MessageProcessor::new(Box::new(core_processor.clone()));
     mock_network
         .register_processor(processor)
-        .expect("Failed to register message processor");
+        .expect("failed to register message processor");
     
     // Verify the message hasn't been seen yet
     assert!(!core_processor.has_seen("Shallow clone test"));
@@ -148,7 +148,7 @@ fn test_concurrent_message_sending() {
     let msg_proc_1 = MessageProcessor::new(Box::new(core_proc_1.clone()));
     mock_net_1
         .register_processor(msg_proc_1)
-        .expect("Failed to register message processor");
+        .expect("failed to register message processor");
 
     let id_2 = random_identifier();
     let mock_net_2 = NetworkHub::new_mock_network(hub, id_2).unwrap();
