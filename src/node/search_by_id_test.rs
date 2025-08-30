@@ -657,11 +657,11 @@ fn test_search_by_id_error_propagation() {
     );
 }
 
-/// Test that verifies search_by_id functionality through message processing with mock networking.
+/// An integration test that verifies search_by_id functionality through message processing with mock networking.
 /// This is a variation of test_search_by_id_found_left_direction that treats the node as a MessageProcessor
-/// and verifies that it correctly processes IdSearchRequest messages and sends IdSearchResponse messages.
+/// and verifies that it correctly processes IdSearchRequest messages and sends IdSearchResponse messages through a mock networking.
 #[test]
-fn test_search_by_id_message_processing_left_direction() {
+fn test_search_by_id_networking_integration() {
     static MESSAGE_CAPTURE: std::sync::OnceLock<Arc<Mutex<Vec<Message>>>> = std::sync::OnceLock::new();
     
     let lt = random_lookup_table_with_extremes(LOOKUP_TABLE_LEVELS);
