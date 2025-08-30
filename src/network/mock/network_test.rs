@@ -1,10 +1,11 @@
 use crate::core::testutil::fixtures::random_identifier;
 use crate::network::mock::hub::NetworkHub;
-use crate::network::Payload::TestMessage;
-use crate::network::{Message, MessageProcessor, MessageProcessorCore, Network};
+use crate::network::Event::TestMessage;
+use crate::network::{MessageProcessor, EventProcessorCore, Network, Event};
 use std::collections::HashSet;
 use std::sync::{Arc, Barrier, RwLock};
 use std::thread;
+use crate::core::Identifier;
 
 struct MockMessageProcessor {
     inner: Arc<RwLock<MockMessageProcessorInner>>,
@@ -36,10 +37,11 @@ impl Clone for MockMessageProcessor {
     }
 }
 
-impl MessageProcessorCore for MockMessageProcessor {
-    fn process_incoming_message(&self, message: Message) -> anyhow::Result<()> {
-        match message.payload {
+impl EventProcessorCore for MockMessageProcessor {
+    fn process_incoming_event(&self, _origin_id: Identifier, message: Event) -> anyhow::Result<()> {
+        match message {
             TestMessage(content) => {
+                // TODO: make this a hash table and track content with origin_id
                 self.inner.write().unwrap().seen.insert(content);
                 Ok(())
             }
@@ -52,23 +54,20 @@ impl MessageProcessorCore for MockMessageProcessor {
 #[test]
 fn test_mock_message_processor() {
     let hub = NetworkHub::new();
-    let identifier = random_identifier();
-    let mock_network = NetworkHub::new_mock_network(hub.clone(), identifier).unwrap();
+    let target_id = random_identifier();
+    let mock_network = NetworkHub::new_mock_network(hub.clone(), target_id).unwrap();
     let core_processor = MockMessageProcessor::new();
     let processor = MessageProcessor::new(Box::new(core_processor.clone()));
-    let message = Message {
-        payload: TestMessage("Hello, World!".to_string()),
-        target_node_id: identifier,
-        source_node_id: None,
-    };
+    let message = TestMessage("Hello, World!".to_string());
+
 
     assert!(!core_processor.has_seen("Hello, World!"));
     
     assert!(mock_network
         .register_processor(processor)
         .is_ok());
-    
-    assert!(hub.route_message(message).is_ok());
+    let origin_id = random_identifier();
+    assert!(hub.route_message(origin_id, target_id, message).is_ok());
     
     assert!(core_processor.has_seen("Hello, World!"));
 }
@@ -89,15 +88,11 @@ fn test_hub_route_message() {
     let id_2 = random_identifier();
     let mock_net_2 = NetworkHub::new_mock_network(hub, id_2).unwrap();
 
-    let message = Message {
-        payload: TestMessage("Test message".to_string()),
-        target_node_id: id_1,
-        source_node_id: Some(id_2),
-    };
+    let message = TestMessage("Test message".to_string());
 
     assert!(!core_proc_1.has_seen("Test message"));
     
-    assert!(mock_net_2.send_message(message).is_ok());
+    assert!(mock_net_2.send_event(id_1, message).is_ok());
     
     assert!(core_proc_1.has_seen("Test message"));
 }
@@ -108,17 +103,13 @@ fn test_network_hub_shallow_clone() {
     let hub = NetworkHub::new();
     let hub_clone = hub.clone();
     
-    let identifier = random_identifier();
+    let target_id = random_identifier();
     
     // Create a mock network through the original hub
-    let mock_network = NetworkHub::new_mock_network(hub.clone(), identifier).unwrap();
+    let mock_network = NetworkHub::new_mock_network(hub.clone(), target_id).unwrap();
     
     // Create a message to route through the cloned hub
-    let message = Message {
-        payload: TestMessage("Shallow clone test".to_string()),
-        target_node_id: identifier,
-        source_node_id: None,
-    };
+    let message = TestMessage("Shallow clone test".to_string());
     
     // Register a processor on the mock network
     let core_processor = MockMessageProcessor::new();
@@ -131,7 +122,8 @@ fn test_network_hub_shallow_clone() {
     assert!(!core_processor.has_seen("Shallow clone test"));
     
     // Route message through the CLONED hub - this should work because it shares the same underlying data
-    assert!(hub_clone.route_message(message).is_ok());
+    let origin_id = random_identifier();
+    assert!(hub_clone.route_message(origin_id, target_id, message).is_ok());
     
     // Verify the message was processed - proving the clone shares the same networks map
     assert!(core_processor.has_seen("Shallow clone test"));
@@ -166,20 +158,15 @@ fn test_concurrent_message_sending() {
         let content = content.clone();
         let barrier_clone = barrier.clone();
         let mock_net_2_clone = mock_net_2.clone();
-        let id_1_copy = id_1;
 
         let handle = thread::spawn(move || {
-            let message = Message {
-                payload: TestMessage(content),
-                target_node_id: id_1_copy,
-                source_node_id: None,
-            };
+            let message = TestMessage(content);
 
             // Wait for all threads to reach this point
             barrier_clone.wait();
 
             // Send the message
-            mock_net_2_clone.send_message(message).unwrap();
+            mock_net_2_clone.send_event(id_1, message).unwrap();
         });
 
         handles.push(handle);
@@ -218,17 +205,14 @@ fn test_mock_network_processor_sharing_between_clones() {
     assert!(mock_network.register_processor(processor).is_ok());
     
     // Create a message to test with
-    let message = Message {
-        payload: TestMessage("Shared processor test".to_string()),
-        target_node_id: identifier,
-        source_node_id: None,
-    };
+    let message = TestMessage("Shared processor test".to_string());
     
     // Verify the message hasn't been seen yet
     assert!(!core_processor.has_seen("Shared processor test"));
     
     // Send message through the CLONED network - should work because processor is shared
-    assert!(mock_network_clone.incoming_message(message).is_ok());
+    let origin_id = random_identifier();
+    assert!(mock_network_clone.incoming_message(origin_id, message).is_ok());
     
     // Verify the message was processed through the shared processor
     assert!(core_processor.has_seen("Shared processor test"));
@@ -251,17 +235,14 @@ fn test_mock_network_processor_sharing_clone_to_original() {
     assert!(mock_network_clone.register_processor(processor).is_ok());
     
     // Create a message to test with
-    let message = Message {
-        payload: TestMessage("Clone to original test".to_string()),
-        target_node_id: identifier,
-        source_node_id: None,
-    };
+    let message = TestMessage("Clone to original test".to_string());
     
     // Verify the message hasn't been seen yet
     assert!(!core_processor.has_seen("Clone to original test"));
     
     // Send message through the ORIGINAL network - should work because processor is shared
-    assert!(mock_network.incoming_message(message).is_ok());
+    let origin_id = random_identifier();
+    assert!(mock_network.incoming_message(origin_id, message).is_ok());
     
     // Verify the message was processed through the shared processor
     assert!(core_processor.has_seen("Clone to original test"));
@@ -274,32 +255,25 @@ fn test_message_processor_clone_functionality() {
     let core_processor = MockMessageProcessor::new();
     let processor1 = MessageProcessor::new(Box::new(core_processor.clone()));
     let processor2 = processor1.clone();
-    
-    let identifier = random_identifier();
+
     
     // Create test messages
-    let message1 = Message {
-        payload: TestMessage("Processor clone test 1".to_string()),
-        target_node_id: identifier,
-        source_node_id: None,
-    };
+    let message1 = TestMessage("Processor clone test 1".to_string());
     
-    let message2 = Message {
-        payload: TestMessage("Processor clone test 2".to_string()),
-        target_node_id: identifier,
-        source_node_id: None,
-    };
+    let message2 =  TestMessage("Processor clone test 2".to_string());
+
     
     // Verify messages haven't been seen yet
     assert!(!core_processor.has_seen("Processor clone test 1"));
     assert!(!core_processor.has_seen("Processor clone test 2"));
     
     // Process first message with first processor
-    assert!(processor1.process_incoming_message(message1).is_ok());
+    let  origin_id = random_identifier();
+    assert!(processor1.process_incoming_event(origin_id, message1).is_ok());
     assert!(core_processor.has_seen("Processor clone test 1"));
     
     // Process second message with cloned processor
-    assert!(processor2.process_incoming_message(message2).is_ok());
+    assert!(processor2.process_incoming_event(origin_id, message2).is_ok());
     assert!(core_processor.has_seen("Processor clone test 2"));
     
     // Both messages should be visible from the shared state

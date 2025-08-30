@@ -10,7 +10,7 @@ use crate::core::{
     ArrayLookupTable, IdSearchReq, Identifier, LookupTable, LookupTableLevel, LOOKUP_TABLE_LEVELS,
 };
 
-use crate::network::{Message, MessageProcessorCore, NetworkMock, Payload};
+use crate::network::{EventProcessorCore, NetworkMock, Event};
 use crate::node::Node;
 use anyhow::anyhow;
 use rand::Rng;
@@ -662,7 +662,7 @@ fn test_search_by_id_error_propagation() {
 /// and verifies that it correctly processes IdSearchRequest messages and sends IdSearchResponse messages through a mock networking.
 #[test]
 fn test_search_by_id_networking_integration() {
-    static MESSAGE_CAPTURE: std::sync::OnceLock<Arc<Mutex<Vec<Message>>>> = std::sync::OnceLock::new();
+    static MESSAGE_CAPTURE: std::sync::OnceLock<Arc<Mutex<Vec<Event>>>> = std::sync::OnceLock::new();
     
     let lt = random_lookup_table_with_extremes(LOOKUP_TABLE_LEVELS);
     let target = random_identifier();
@@ -685,11 +685,7 @@ fn test_search_by_id_networking_integration() {
 
     // Create the search request message
     let search_request = IdSearchReq::new(target, 0, Direction::Left);
-    let request_message = Message {
-        payload: Payload::IdSearchRequest(search_request),
-        target_node_id: node_id,
-        source_node_id: Some(random_identifier()),
-    };
+    let request_message = Event::IdSearchRequest(search_request);
     
     // Mock the network to capture sent messages
     let sent_messages = Arc::new(Mutex::new(Vec::new()));
@@ -699,9 +695,10 @@ fn test_search_by_id_networking_integration() {
         NetworkMock::register_processor
             .each_call(matching!(_))
             .answers(&|_, _| Ok(())),
-        NetworkMock::send_message
+        NetworkMock::send_event
             .each_call(matching!(_))
-            .answers(&|_, message: Message| {
+            .answers(&|_, _id: Identifier,  message: Event| {
+                // TODO: capture must be based on (id, message)
                 MESSAGE_CAPTURE.get().unwrap().lock().unwrap().push(message);
                 Ok(())
             }),
@@ -720,8 +717,9 @@ fn test_search_by_id_networking_integration() {
     )
     .expect("failed to create BaseNode");
 
-    // Process the request message directly through the node's MessageProcessorCore implementation
-    node.process_incoming_message(request_message)
+    // Process the request event directly through the node's EventProcessorCore implementation
+    let origin_id = random_identifier();
+    node.process_incoming_event(origin_id, request_message)
         .expect("failed to process request message");
     
     // Verify exactly one response message was sent
@@ -729,8 +727,8 @@ fn test_search_by_id_networking_integration() {
     assert_eq!(messages.len(), 1, "expected exactly one response message");
 
     // Verify the response payload
-    match &messages[0].payload {
-        Payload::IdSearchResponse(response) => {
+    match &messages[0] {
+        Event::IdSearchResponse(response) => {
             // Calculate expected result using the same logic as the original test
             let (expected_lvl, expected_identity) = lt
                 .left_neighbors()
@@ -755,7 +753,7 @@ fn test_search_by_id_networking_integration() {
         }
         _ => panic!(
             "expected IdSearchResponse payload, got: {:?}",
-            messages[0].payload
+            messages[0]
         ),
     }
 }

@@ -1,6 +1,6 @@
 use crate::core::Identifier;
 use crate::network::mock::network::MockNetwork;
-use crate::network::Message;
+use crate::network::{Event};
 use anyhow::{anyhow, Context};
 use std::collections::HashMap;
 use std::sync::{Arc, RwLock};
@@ -38,27 +38,27 @@ impl NetworkHub {
             ));
         }
 
-        let mock_network = Arc::new(MockNetwork::new(hub.clone()));
+        let mock_network = Arc::new(MockNetwork::new(identifier, hub.clone()));
         networks.insert(identifier, mock_network.clone());
         Ok(mock_network)
     }
 
+    // TODO: route_message should be a closure that embeds the origin_id.
     /// Routes a message to the appropriate mock network based on the target node identifier.
-    pub fn route_message(&self, message: Message) -> anyhow::Result<()> {
+    pub fn route_message(&self, origin_id: Identifier, target_id: Identifier, message: Event) -> anyhow::Result<()> {
         let networks = self
             .networks
             .read()
             .map_err(|_| anyhow!("failed to acquire read lock on network hub"))?;
 
-        if let Some(network) = networks.get(&message.target_node_id) {
+        if let Some(network) = networks.get(&target_id) {
             network
-                .incoming_message(message)
+                .incoming_message(origin_id, message)
                 .context("failed to send message through network")?;
             Ok(())
         } else {
             Err(anyhow!(
-                "network with identifier {} not found",
-                message.target_node_id
+                "network with identifier {} not found", target_id
             ))
         }
     }

@@ -4,13 +4,13 @@ use crate::core::{
 };
 #[cfg(test)] // TODO: Remove once BaseNode is used in production code.
 use crate::network::MessageProcessor;
-use crate::network::{Message, MessageProcessorCore, Network};
+use crate::network::{EventProcessorCore, Network, Event};
 use crate::node::Node;
 use anyhow::anyhow;
 use std::fmt;
 use std::fmt::Formatter;
 use tracing::Span;
-use crate::network::Payload::{IdSearchRequest, IdSearchResponse};
+use crate::network::Event::{IdSearchRequest, IdSearchResponse};
 
 // TODO: Remove #[allow(dead_code)] once BaseNode is used in production code.
 #[allow(dead_code)]
@@ -170,12 +170,12 @@ impl Node for BaseNode {
     }
 }
 
-impl MessageProcessorCore for BaseNode {
-    fn process_incoming_message(&self, message: Message) -> anyhow::Result<()> {
+impl EventProcessorCore for BaseNode {
+    fn process_incoming_event(&self, origin_id: Identifier, message: Event) -> anyhow::Result<()> {
         let _enter = self.span.enter();
         tracing::trace!("processing incoming message with target_node_id");
 
-        match message.payload {
+        match message {
             IdSearchRequest(req) => {
                 tracing::trace!(
                     "received IdSearchRequest for target {:?}, direction {:?}, level {}",
@@ -185,11 +185,7 @@ impl MessageProcessorCore for BaseNode {
                 );
 
                 let res = self.search_by_id(&req).map_err(|e| anyhow!("failed to perform search by id {}", e))?;
-                let response_message = Message {
-                    payload: IdSearchResponse(res),
-                    target_node_id: message.source_node_id.unwrap_or(self.id),
-                    source_node_id: Some(self.id),
-                };
+                let response_message = IdSearchResponse(res);
 
                 tracing::trace!(
                     "sending IdSearchResponse with result {:?} at level {}",
@@ -197,7 +193,8 @@ impl MessageProcessorCore for BaseNode {
                     res.termination_level()
                 );
 
-                self.net.send_message(response_message).map_err(|e| anyhow!("failed to send response message for search by id: {}", e))?;
+                // TODO: search result must be routed to the next node in the path; or the origin node (if the search is complete)
+                self.net.send_event(origin_id, response_message).map_err(|e| anyhow!("failed to send response message for search by id: {}", e))?;
                 Ok(())
             }
             IdSearchResponse(res) => {
