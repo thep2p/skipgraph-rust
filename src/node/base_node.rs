@@ -193,7 +193,7 @@ impl EventProcessorCore for BaseNode {
                     res.termination_level()
                 );
 
-                // TODO: search result must be routed to the next node in the path; or the origin node (if the search is complete)
+                // TODO: https://github.com/thep2p/skipgraph-rust/issues/43
                 self.net.send_event(origin_id, response_event).map_err(|e| anyhow!("failed to send response event for search by id: {}", e))?;
                 Ok(())
             }
