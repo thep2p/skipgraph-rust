@@ -657,12 +657,12 @@ fn test_search_by_id_error_propagation() {
     );
 }
 
-/// An integration test that verifies search_by_id functionality through message processing with mock networking.
-/// This is a variation of test_search_by_id_found_left_direction that treats the node as a MessageProcessor
-/// and verifies that it correctly processes IdSearchRequest messages and sends IdSearchResponse messages through a mock networking.
+/// An integration test that verifies search_by_id functionality through event processing with mock networking.
+/// This is a variation of test_search_by_id_found_left_direction that treats the node as an EventProcessor
+/// and verifies that it correctly processes IdSearchRequest events and sends IdSearchResponse events through a mock networking.
 #[test]
 fn test_search_by_id_networking_integration() {
-    static MESSAGE_CAPTURE: std::sync::OnceLock<Arc<Mutex<Vec<Event>>>> = std::sync::OnceLock::new();
+    static EVENT_CAPTURE: std::sync::OnceLock<Arc<Mutex<Vec<Event>>>> = std::sync::OnceLock::new();
     
     let lt = random_lookup_table_with_extremes(LOOKUP_TABLE_LEVELS);
     let target = random_identifier();
@@ -683,13 +683,13 @@ fn test_search_by_id_networking_integration() {
     
     let node_id = random_identifier();
 
-    // Create the search request message
+    // Create the search request event
     let search_request = IdSearchReq::new(target, 0, Direction::Left);
-    let request_message = Event::IdSearchRequest(search_request);
+    let request_event = Event::IdSearchRequest(search_request);
     
-    // Mock the network to capture sent messages
-    let sent_messages = Arc::new(Mutex::new(Vec::new()));
-    MESSAGE_CAPTURE.set(sent_messages.clone()).unwrap();
+    // Mock the network to capture sent events
+    let sent_events = Arc::new(Mutex::new(Vec::new()));
+    EVENT_CAPTURE.set(sent_events.clone()).unwrap();
     
     let mock_net = Unimock::new((
         NetworkMock::register_processor
@@ -697,9 +697,9 @@ fn test_search_by_id_networking_integration() {
             .answers(&|_, _| Ok(())),
         NetworkMock::send_event
             .each_call(matching!(_))
-            .answers(&|_, _id: Identifier,  message: Event| {
-                // TODO: capture must be based on (id, message)
-                MESSAGE_CAPTURE.get().unwrap().lock().unwrap().push(message);
+            .answers(&|_, _id: Identifier,  event: Event| {
+                // TODO: capture must be based on (id, event)
+                EVENT_CAPTURE.get().unwrap().lock().unwrap().push(event);
                 Ok(())
             }),
         NetworkMock::clone_box
@@ -719,15 +719,15 @@ fn test_search_by_id_networking_integration() {
 
     // Process the request event directly through the node's EventProcessorCore implementation
     let origin_id = random_identifier();
-    node.process_incoming_event(origin_id, request_message)
-        .expect("failed to process request message");
+    node.process_incoming_event(origin_id, request_event)
+        .expect("failed to process request event");
     
-    // Verify exactly one response message was sent
-    let messages = sent_messages.lock().unwrap();
-    assert_eq!(messages.len(), 1, "expected exactly one response message");
+    // Verify exactly one response event was sent
+    let events = sent_events.lock().unwrap();
+    assert_eq!(events.len(), 1, "expected exactly one response event");
 
     // Verify the response payload
-    match &messages[0] {
+    match &events[0] {
         Event::IdSearchResponse(response) => {
             // Calculate expected result using the same logic as the original test
             let (expected_lvl, expected_identity) = lt
@@ -753,7 +753,7 @@ fn test_search_by_id_networking_integration() {
         }
         _ => panic!(
             "expected IdSearchResponse payload, got: {:?}",
-            messages[0]
+            events[0]
         ),
     }
 }

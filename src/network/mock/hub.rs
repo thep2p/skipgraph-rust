@@ -6,8 +6,8 @@ use std::collections::HashMap;
 use std::sync::{Arc, RwLock};
 
 /// NetworkHub is a central hub that manages multiple mock networks.
-/// It allows for the creation of new mock networks and routing messages between them.
-/// Messages are routed completely through the hub in an in-memory fashion, simulating a network environment without actual network communication.
+/// It allows for the creation of new mock networks and routing events between them.
+/// Events are routed completely through the hub in an in-memory fashion, simulating a network environment without actual network communication.
 ///
 /// Thread-safety is handled internally using RwLock for the networks map, following a Go-like approach
 /// where the struct can be safely shared via Arc<NetworkHub> without external locking.
@@ -43,9 +43,9 @@ impl NetworkHub {
         Ok(mock_network)
     }
 
-    // TODO: route_message should be a closure that embeds the origin_id.
-    /// Routes a message to the appropriate mock network based on the target node identifier.
-    pub fn route_message(&self, origin_id: Identifier, target_id: Identifier, message: Event) -> anyhow::Result<()> {
+    // TODO: route_event should be a closure that embeds the origin_id.
+    /// Routes an event to the appropriate mock network based on the target node identifier.
+    pub fn route_event(&self, origin_id: Identifier, target_id: Identifier, event: Event) -> anyhow::Result<()> {
         let networks = self
             .networks
             .read()
@@ -53,8 +53,8 @@ impl NetworkHub {
 
         if let Some(network) = networks.get(&target_id) {
             network
-                .incoming_message(origin_id, message)
-                .context("failed to send message through network")?;
+                .incoming_event(origin_id, event)
+                .context("failed to send event through network")?;
             Ok(())
         } else {
             Err(anyhow!(

@@ -171,11 +171,11 @@ impl Node for BaseNode {
 }
 
 impl EventProcessorCore for BaseNode {
-    fn process_incoming_event(&self, origin_id: Identifier, message: Event) -> anyhow::Result<()> {
+    fn process_incoming_event(&self, origin_id: Identifier, event: Event) -> anyhow::Result<()> {
         let _enter = self.span.enter();
-        tracing::trace!("processing incoming message with target_node_id");
+        tracing::trace!("processing incoming event with target_node_id");
 
-        match message {
+        match event {
             IdSearchRequest(req) => {
                 tracing::trace!(
                     "received IdSearchRequest for target {:?}, direction {:?}, level {}",
@@ -185,7 +185,7 @@ impl EventProcessorCore for BaseNode {
                 );
 
                 let res = self.search_by_id(&req).map_err(|e| anyhow!("failed to perform search by id {}", e))?;
-                let response_message = IdSearchResponse(res);
+                let response_event = IdSearchResponse(res);
 
                 tracing::trace!(
                     "sending IdSearchResponse with result {:?} at level {}",
@@ -194,7 +194,7 @@ impl EventProcessorCore for BaseNode {
                 );
 
                 // TODO: search result must be routed to the next node in the path; or the origin node (if the search is complete)
-                self.net.send_event(origin_id, response_message).map_err(|e| anyhow!("failed to send response message for search by id: {}", e))?;
+                self.net.send_event(origin_id, response_event).map_err(|e| anyhow!("failed to send response event for search by id: {}", e))?;
                 Ok(())
             }
             IdSearchResponse(res) => {
@@ -209,8 +209,8 @@ impl EventProcessorCore for BaseNode {
                 Ok(())
             }
             _ => {
-                tracing::warn!("received unsupported message payload type");
-                Err(anyhow!("unsupported message payload type"))
+                tracing::warn!("received unsupported event payload type");
+                Err(anyhow!("unsupported event payload type"))
             }
         }
     }
@@ -249,7 +249,7 @@ impl BaseNode {
         let processor = MessageProcessor::new(Box::new(node.clone()));
         
         tracing::trace!(
-            "registering BaseNode {:?} as message processor in network",
+            "registering BaseNode {:?} as event processor in network",
             id
         );
 
