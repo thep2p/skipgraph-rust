@@ -12,8 +12,8 @@ impl Identity {
     /// Create a new Identity
     pub fn new(id: &Identifier, mem_vec: &MembershipVector, address: Address) -> Identity {
         Identity {
-            id: *id,
-            mem_vec: *mem_vec,
+            id: id.clone(),
+            mem_vec: mem_vec.clone(),
             address,
         }
     }
@@ -30,7 +30,7 @@ impl Identity {
 
     /// Get the address of the node
     pub fn address(&self) -> Address {
-        self.address
+        self.address.clone()
     }
 }
 
@@ -45,7 +45,7 @@ mod tests {
         let id = random_identifier();
         let mem_vec = random_membership_vector();
         let address = Address::new("localhost", "1234");
-        let identity = Identity::new(&id, &mem_vec, address);
+        let identity = Identity::new(&id, &mem_vec, address.clone());
         assert_eq!(identity.id(), &id);
         assert_eq!(identity.mem_vec(), &mem_vec);
         assert_eq!(identity.address(), address);

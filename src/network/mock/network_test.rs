@@ -55,7 +55,7 @@ impl EventProcessorCore for MockEventProcessor {
 fn test_mock_event_processor() {
     let hub = NetworkHub::new();
     let target_id = random_identifier();
-    let mock_network = NetworkHub::new_mock_network(hub.clone(), target_id).unwrap();
+    let mock_network = NetworkHub::new_mock_network(hub.clone(), target_id.clone()).unwrap();
     let core_processor = MockEventProcessor::new();
     let processor = MessageProcessor::new(Box::new(core_processor.clone()));
     let event = TestMessage("Hello, World!".to_string());
@@ -78,7 +78,7 @@ fn test_hub_route_event() {
     let hub = NetworkHub::new();
 
     let id_1 = random_identifier();
-    let mock_net_1 = NetworkHub::new_mock_network(hub.clone(), id_1).unwrap();
+    let mock_net_1 = NetworkHub::new_mock_network(hub.clone(), id_1.clone()).unwrap();
     let core_proc_1 = MockEventProcessor::new();
     let msg_proc_1 = MessageProcessor::new(Box::new(core_proc_1.clone()));
     mock_net_1
@@ -106,7 +106,7 @@ fn test_network_hub_shallow_clone() {
     let target_id = random_identifier();
     
     // Create a mock network through the original hub
-    let mock_network = NetworkHub::new_mock_network(hub.clone(), target_id).unwrap();
+    let mock_network = NetworkHub::new_mock_network(hub.clone(), target_id.clone()).unwrap();
     
     // Create an event to route through the cloned hub
     let event = TestMessage("Shallow clone test".to_string());
@@ -135,7 +135,7 @@ fn test_concurrent_event_sending() {
     let hub = NetworkHub::new();
 
     let id_1 = random_identifier();
-    let mock_net_1 = NetworkHub::new_mock_network(hub.clone(), id_1).unwrap();
+    let mock_net_1 = NetworkHub::new_mock_network(hub.clone(), id_1.clone()).unwrap();
     let core_proc_1 = MockEventProcessor::new();
     let msg_proc_1 = MessageProcessor::new(Box::new(core_proc_1.clone()));
     mock_net_1
@@ -158,6 +158,7 @@ fn test_concurrent_event_sending() {
         let content = content.clone();
         let barrier_clone = barrier.clone();
         let mock_net_2_clone = mock_net_2.clone();
+        let id_1_clone = id_1.clone();
 
         let handle = thread::spawn(move || {
             let event = TestMessage(content);
@@ -166,7 +167,7 @@ fn test_concurrent_event_sending() {
             barrier_clone.wait();
 
             // Send the event
-            mock_net_2_clone.send_event(id_1, event).unwrap();
+            mock_net_2_clone.send_event(id_1_clone, event).unwrap();
         });
 
         handles.push(handle);
@@ -269,7 +270,7 @@ fn test_event_processor_clone_functionality() {
     
     // Process first event with first processor
     let  origin_id = random_identifier();
-    assert!(processor1.process_incoming_event(origin_id, event1).is_ok());
+    assert!(processor1.process_incoming_event(origin_id.clone(), event1).is_ok());
     assert!(core_processor.has_seen("Processor clone test 1"));
     
     // Process second event with cloned processor

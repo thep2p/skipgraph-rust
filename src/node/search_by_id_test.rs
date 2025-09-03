@@ -36,7 +36,7 @@ fn test_search_by_id_singleton_fallback() {
     ));
     let node = BaseNode::new(
         span_fixture(),
-        id,
+        id.clone(),
         mem_vec,
         Box::new(ArrayLookupTable::new(&span_fixture())),
         Box::new(mock_net),
@@ -52,7 +52,7 @@ fn test_search_by_id_singleton_fallback() {
     ];
 
     for (target, direction) in cases {
-        let req = IdSearchReq::new(target, 3, direction);
+        let req = IdSearchReq::new(target.clone(), 3, direction);
         let res = node.search_by_id(&req).expect("search failed");
         // Ensures the search is terminated at the level zero.
         assert_eq!(res.termination_level(), 0);
@@ -102,7 +102,7 @@ fn test_search_by_id_found_left_direction() {
         .expect("failed to create BaseNode");
 
         let direction = Direction::Left;
-        let req = IdSearchReq::new(target, lvl, direction);
+        let req = IdSearchReq::new(target.clone(), lvl, direction);
 
         let actual_result = node.search_by_id(&req).unwrap();
 
@@ -111,7 +111,7 @@ fn test_search_by_id_found_left_direction() {
             .unwrap()
             .into_iter()
             .filter(|(l, id)| *l <= req.level() && id.id() >= req.target())
-            .min_by_key(|(_, id)| *id.id())
+            .min_by_key(|(_, id)| id.id().clone())
             .unwrap();
 
         assert_eq!(expected_lvl, actual_result.termination_level());
@@ -143,7 +143,7 @@ fn test_search_by_id_found_right_direction() {
         .expect("failed to update entry in lookup table");
 
         let direction = Direction::Right;
-        let req = IdSearchReq::new(target, lvl, direction);
+        let req = IdSearchReq::new(target.clone(), lvl, direction);
 
         let mock_net = Unimock::new((
             NetworkMock::register_processor
@@ -170,7 +170,7 @@ fn test_search_by_id_found_right_direction() {
             .unwrap()
             .into_iter()
             .filter(|(lvl, id)| *lvl <= req.level() && id.id() <= req.target())
-            .max_by_key(|(_, id)| *id.id())
+            .max_by_key(|(_, id)| id.id().clone())
             .unwrap();
 
         assert_eq!(expected_lvl, actual_result.termination_level());
@@ -241,7 +241,7 @@ fn test_search_by_id_not_found_left_direction() {
         .expect("failed to create BaseNode");
 
         let direction = Direction::Left;
-        let req = IdSearchReq::new(target, lvl, direction);
+        let req = IdSearchReq::new(target.clone(), lvl, direction);
 
         let actual_result = node.search_by_id(&req).unwrap();
 
@@ -313,7 +313,7 @@ fn test_search_by_id_not_found_right_direction() {
         .expect("failed to create BaseNode");
 
         let direction = Direction::Right;
-        let req = IdSearchReq::new(target, lvl, direction);
+        let req = IdSearchReq::new(target.clone(), lvl, direction);
 
         let actual_result = node.search_by_id(&req).unwrap();
 
@@ -360,9 +360,9 @@ fn test_search_by_id_exact_result() {
     // This test should ensure that when the exact target is found, it returns the correct level and identifier.
     for lvl in 0..LOOKUP_TABLE_LEVELS {
         for direction in [Direction::Left, Direction::Right] {
-            let target_identity = lt.get_entry(lvl, direction).unwrap().unwrap();
+            let target_identity = lt.get_entry(lvl, direction.clone()).unwrap().unwrap();
             let target = target_identity.id();
-            let req = IdSearchReq::new(*target, lvl, direction);
+            let req = IdSearchReq::new(target.clone(), lvl, direction);
 
             let actual_result = node.search_by_id(&req).unwrap();
 
@@ -426,6 +426,7 @@ fn test_search_by_id_concurrent_found_left_direction() {
         let handle_barrier = barrier.clone();
         let node_ref = node.clone();
         let lt_clone = lt.clone();
+        let target_clone = target.clone();
         let handle = std::thread::spawn(move || {
             // Wait for all threads to be ready
             handle_barrier.wait();
@@ -434,7 +435,7 @@ fn test_search_by_id_concurrent_found_left_direction() {
             let lvl = rand::rng().random_range(0..LOOKUP_TABLE_LEVELS);
 
             // Perform the search in the left direction
-            let req = IdSearchReq::new(target, lvl, Direction::Left);
+            let req = IdSearchReq::new(target_clone.clone(), lvl, Direction::Left);
             let actual_result = node_ref.search_by_id(&req).unwrap();
 
             let expected_result = lt_clone
@@ -442,7 +443,7 @@ fn test_search_by_id_concurrent_found_left_direction() {
                 .unwrap()
                 .into_iter()
                 .filter(|(l, id)| *l <= req.level() && id.id() >= req.target())
-                .min_by_key(|(_, id)| *id.id());
+                .min_by_key(|(_, id)| id.id().clone());
 
             match expected_result {
                 Some((expected_lvl, expected_identity)) => {
@@ -519,6 +520,7 @@ fn test_search_by_id_concurrent_right_direction() {
         let handle_barrier = barrier.clone();
         let node_ref = node.clone();
         let lt_clone = lt.clone();
+        let target_clone = target.clone();
         let handle = std::thread::spawn(move || {
             // Wait for all threads to be ready
             handle_barrier.wait();
@@ -527,7 +529,7 @@ fn test_search_by_id_concurrent_right_direction() {
             let lvl = rand::rng().random_range(0..LOOKUP_TABLE_LEVELS);
 
             // Perform the search in the right direction
-            let req = IdSearchReq::new(target, lvl, Direction::Right);
+            let req = IdSearchReq::new(target_clone.clone(), lvl, Direction::Right);
             let actual_result = node_ref.search_by_id(&req).unwrap();
 
             let expected_result = lt_clone
@@ -535,7 +537,7 @@ fn test_search_by_id_concurrent_right_direction() {
                 .unwrap()
                 .into_iter()
                 .filter(|(l, id)| *l <= req.level() && id.id() <= req.target())
-                .max_by_key(|(_, id)| *id.id());
+                .max_by_key(|(_, id)| id.id().clone());
 
             match expected_result {
                 Some((expected_lvl, expected_identity)) => {
@@ -684,8 +686,8 @@ fn test_search_by_id_networking_integration() {
     let node_id = random_identifier();
 
     // Create the search request event
-    let search_request = IdSearchReq::new(target, 0, Direction::Left);
-    let request_event = Event::IdSearchRequest(search_request);
+    let search_request = IdSearchReq::new(target.clone(), 0, Direction::Left);
+    let request_event = Event::IdSearchRequest(search_request.clone());
     
     // Mock the network to capture sent events
     let sent_events = Arc::new(Mutex::new(Vec::new()));
@@ -737,7 +739,7 @@ fn test_search_by_id_networking_integration() {
                 .filter(|(l, id)| {
                     *l <= search_request.level() && id.id() >= search_request.target()
                 })
-                .min_by_key(|(_, id)| *id.id())
+                .min_by_key(|(_, id)| id.id().clone())
                 .unwrap();
 
             assert_eq!(
