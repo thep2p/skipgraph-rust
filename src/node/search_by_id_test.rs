@@ -17,7 +17,6 @@ use rand::Rng;
 use std::sync::{Arc, Mutex};
 use unimock::*;
 
-// TODO: move other tests from base_node.rs here
 /// Tests fallback behavior of `search_by_id` when no neighbors exist.
 /// Each case mirrors a search on a singleton node as described in the behavior
 /// matrix of issue https://github.com/thep2p/skipgraph-rust/issues/22.
