@@ -58,7 +58,7 @@ impl Clone for MockNetwork {
             core: RwLock::new(InnerMockNetwork {
                 hub: core_guard.hub.clone(),
                 processor: core_guard.processor.clone(), // Share processor state between clones
-                id: core_guard.id,
+                id: core_guard.id.clone(),
             }),
         }
     }
@@ -70,7 +70,7 @@ impl Network for MockNetwork {
         let core_guard = self.core.read();
         
         core_guard.hub
-            .route_event(core_guard.id, target_id, event)
+            .route_event(core_guard.id.clone(), target_id, event)
             .context("failed to route event")
     }
 

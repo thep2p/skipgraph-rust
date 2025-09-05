@@ -21,7 +21,7 @@ pub const MAX: Identifier = Identifier([255u8; IDENTIFIER_SIZE_BYTES]);
 /// - CompareGreater: the left identifier is greater than the right identifier.
 /// - CompareEqual: the two identifiers are equal.
 /// - CompareLess: the left identifier is less than the right identifier.
-#[derive(Debug, PartialEq, Copy, Clone)]
+#[derive(Debug, PartialEq, Clone)]
 pub enum ComparisonResult {
     CompareGreater,
     CompareEqual,
@@ -31,7 +31,6 @@ pub enum ComparisonResult {
 /// ComparisonContext represents the context of a comparison between two identifiers.
 /// It contains the result of the comparison, the left and right identifiers, and the index of the differing byte.
 /// The differing byte is the first byte where the two identifiers differ.
-#[derive(Copy, Clone)]
 pub struct ComparisonContext {
     result: ComparisonResult,
     left: Identifier,
@@ -42,7 +41,7 @@ pub struct ComparisonContext {
 impl ComparisonContext {
     /// Returns the result of the comparison.
     pub fn result(&self) -> ComparisonResult {
-        self.result
+        self.result.clone()
     }
 
     /// Returns the left identifier.
@@ -85,7 +84,7 @@ impl Display for ComparisonContext {
 }
 
 // Identifier represents a 32-byte unique identifier for a Skip Graph node.
-#[derive(Copy, Clone, PartialEq, Eq, Hash)]
+#[derive(Clone, PartialEq, Eq, Hash)]
 pub struct Identifier([u8; IDENTIFIER_SIZE_BYTES]);
 
 impl Identifier {
@@ -95,16 +94,16 @@ impl Identifier {
                 std::cmp::Ordering::Less => {
                     return ComparisonContext {
                         result: CompareLess,
-                        left: *self,
-                        right: *other,
+                        left: self.clone(),
+                        right: other.clone(),
                         diff_index: i,
                     };
                 }
                 std::cmp::Ordering::Greater => {
                     return ComparisonContext {
                         result: CompareGreater,
-                        left: *self,
-                        right: *other,
+                        left: self.clone(),
+                        right: other.clone(),
                         diff_index: i,
                     };
                 }
@@ -113,8 +112,8 @@ impl Identifier {
         }
         ComparisonContext {
             result: CompareEqual,
-            left: *self,
-            right: *other,
+            left: self.clone(),
+            right: other.clone(),
             diff_index: IDENTIFIER_SIZE_BYTES,
         }
     }
