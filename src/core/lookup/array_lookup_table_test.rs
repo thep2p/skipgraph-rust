@@ -204,7 +204,7 @@ mod tests {
                 barrier_ref.wait(); // wait for all threads to be ready
 
                 // Write the entry
-                lt_ref.update_entry(id.clone(), level, direction.clone()).unwrap();
+                lt_ref.update_entry(id.clone(), level, direction).unwrap();
 
                 // Read the entry back to check if it was written correctly
                 let entry = lt_ref.get_entry(level, direction).unwrap();
@@ -288,7 +288,7 @@ mod tests {
                     match op {
                         0 => {
                             let (table, last_writes) = &mut *shared_ref.lock();
-                            let read_val_opt = table.get_entry(level, direction.clone()).unwrap();
+                            let read_val_opt = table.get_entry(level, direction).unwrap();
 
                             let last_write_opt = last_writes.get(&(level, direction)).cloned();
 
@@ -318,7 +318,7 @@ mod tests {
                             let (table, last_writes) = &mut *shared_ref.lock();
 
                             let id = random_identity();
-                            if table.update_entry(id.clone(), level, direction.clone()).is_ok() {
+                            if table.update_entry(id.clone(), level, direction).is_ok() {
                                 // Update the last write map upon successful write
                                 last_writes.insert((level, direction), id);
                             }
@@ -326,7 +326,7 @@ mod tests {
                         2 => {
                             // remove atomically
                             let (table, last_writes) = &mut *shared_ref.lock();
-                            if table.remove_entry(level, direction.clone()).is_ok() {
+                            if table.remove_entry(level, direction).is_ok() {
                                 // Remove the last written entry
                                 last_writes.remove(&(level, direction));
                             }

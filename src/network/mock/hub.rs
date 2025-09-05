@@ -36,7 +36,7 @@ impl NetworkHub {
             ));
         }
 
-        let mock_network = Arc::new(MockNetwork::new(identifier.clone(), hub.clone()));
+        let mock_network = Arc::new(MockNetwork::new(identifier, hub.clone()));
         networks.insert(identifier, mock_network.clone());
         Ok(mock_network)
     }

@@ -93,7 +93,7 @@ impl Node for BaseNode {
         // Collect neighbors from levels <= req.level in req.direction
         let candidates: Result<Vec<_>, _> = (0..=req.level())
             .filter_map(|lvl| match self.lt.get_entry(lvl, req.direction()) {
-                Ok(Some(identity)) => Some(Ok((identity.id().clone(), lvl))),
+                Ok(Some(identity)) => Some(Ok((*identity.id(), lvl))),
                 Ok(None) => None,
                 Err(e) => Some(Err(anyhow!(
                     "error while searching by id in level {}: {}",
@@ -118,21 +118,21 @@ impl Node for BaseNode {
                 candidates
                     .into_iter()
                     .filter(|(id, _)| id >= req.target())
-                    .min_by_key(|(id, _)| id.clone())
+                    .min_by_key(|(id, _)| *id)
             }
             Direction::Right => {
                 // In the right direction, the result is the greatest identifier that is less than or equal to the target
                 candidates
                     .into_iter()
                     .filter(|(id, _)| id <= req.target())
-                    .max_by_key(|(id, _)| id.clone())
+                    .max_by_key(|(id, _)| *id)
             }
         };
 
         match result {
             Some((id, level)) => {
                 // If a candidate is found, return it
-                let search_result = IdSearchRes::new(req.target().clone(), level, id.clone());
+                let search_result = IdSearchRes::new(*req.target(), level, id);
                 tracing::trace!(
                     "search successful: found match {:?} at level {}",
                     id,
@@ -150,9 +150,9 @@ impl Node for BaseNode {
                     self.get_identifier()
                 );
                 Ok(IdSearchRes::new(
-                    req.target().clone(),
+                    *req.target(),
                     0,
-                    self.get_identifier().clone(),
+                    *self.get_identifier(),
                 ))
             }
         }
@@ -185,7 +185,7 @@ impl EventProcessorCore for BaseNode {
                 );
 
                 let res = self.search_by_id(&req).map_err(|e| anyhow!("failed to perform search by id {}", e))?;
-                let response_event = IdSearchResponse(res.clone());
+                let response_event = IdSearchResponse(res);
 
                 tracing::trace!(
                     "sending IdSearchResponse with result {:?} at level {}",
@@ -238,8 +238,8 @@ impl BaseNode {
         );
 
         let node = BaseNode {
-            id: id.clone(),
-            mem_vec: mem_vec.clone(),
+            id,
+            mem_vec,
             lt,
             net,
             span: span.clone(),
@@ -288,8 +288,8 @@ impl fmt::Debug for BaseNode {
 impl Clone for BaseNode {
     fn clone(&self) -> Self {
         BaseNode {
-            id: self.id.clone(),
-            mem_vec: self.mem_vec.clone(),
+            id: self.id,
+            mem_vec: self.mem_vec,
             lt: self.lt.clone(),
             net: self.net.clone(),
             span: self.span.clone(),
@@ -311,8 +311,8 @@ mod tests {
         let id = random_identifier();
         let mem_vec = random_membership_vector();
         let node = BaseNode {
-            id: id.clone(),
-            mem_vec: mem_vec.clone(),
+            id,
+            mem_vec,
             lt: Box::new(ArrayLookupTable::new(&span_fixture())),
             net: Box::new(Unimock::new(())), // No expectations needed for direct struct construction
             span: span_fixture(),
