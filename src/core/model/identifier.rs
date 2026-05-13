@@ -21,16 +21,25 @@ pub const MAX: Identifier = Identifier([255u8; IDENTIFIER_SIZE_BYTES]);
 /// - CompareGreater: the left identifier is greater than the right identifier.
 /// - CompareEqual: the two identifiers are equal.
 /// - CompareLess: the left identifier is less than the right identifier.
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Copy)]
 pub enum ComparisonResult {
     CompareGreater,
     CompareEqual,
     CompareLess,
 }
 
+#[allow(useless_deprecated)]
+impl Clone for ComparisonResult {
+    #[deprecated(note = "This type is Copy; prefer implicit copying instead of .clone()")]
+    fn clone(&self) -> Self {
+        *self
+    }
+}
+
 /// ComparisonContext represents the context of a comparison between two identifiers.
 /// It contains the result of the comparison, the left and right identifiers, and the index of the differing byte.
 /// The differing byte is the first byte where the two identifiers differ.
+#[derive(Copy)]
 pub struct ComparisonContext {
     result: ComparisonResult,
     left: Identifier,
@@ -41,7 +50,7 @@ pub struct ComparisonContext {
 impl ComparisonContext {
     /// Returns the result of the comparison.
     pub fn result(&self) -> ComparisonResult {
-        self.result.clone()
+        self.result
     }
 
     /// Returns the left identifier.
@@ -57,6 +66,14 @@ impl ComparisonContext {
     /// Returns the index of the differing byte.
     pub fn diff_index(&self) -> usize {
         self.diff_index
+    }
+}
+
+#[allow(useless_deprecated)]
+impl Clone for ComparisonContext {
+    #[deprecated(note = "This type is Copy; prefer implicit copying instead of .clone()")]
+    fn clone(&self) -> Self {
+        *self
     }
 }
 
@@ -84,8 +101,16 @@ impl Display for ComparisonContext {
 }
 
 // Identifier represents a 32-byte unique identifier for a Skip Graph node.
-#[derive(Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Copy, PartialEq, Eq, Hash)]
 pub struct Identifier([u8; IDENTIFIER_SIZE_BYTES]);
+
+#[allow(useless_deprecated)]
+impl Clone for Identifier {
+    #[deprecated(note = "This type is Copy; prefer implicit copying instead of .clone()")]
+    fn clone(&self) -> Self {
+        *self
+    }
+}
 
 impl Identifier {
     pub fn compare(&self, other: &Identifier) -> ComparisonContext {
@@ -124,7 +149,7 @@ impl Identifier {
     pub fn from_bytes(bytes: &[u8]) -> anyhow::Result<Identifier> {
         if bytes.len() > model::IDENTIFIER_SIZE_BYTES {
             return Err(anyhow!(
-                "Identifier size is too large, expected {} bytes, got {} bytes",
+                "identifier size is too large, expected {} bytes, got {} bytes",
                 model::IDENTIFIER_SIZE_BYTES,
                 bytes.len()
             ));
@@ -143,6 +168,12 @@ impl Identifier {
     }
 
     /// Converts the Identifier into a byte slice.
+    pub fn as_bytes(&self) -> &[u8] {
+        &self.0
+    }
+
+    /// Converts the Identifier into a owned byte vector.
+    /// Consider using `as_bytes()` if you don't need ownership.
     pub fn to_bytes(&self) -> Vec<u8> {
         self.0.to_vec()
     }

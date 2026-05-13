@@ -12,11 +12,6 @@ use crate::core::model::identifier::{MAX, ZERO};
 use std::thread::JoinHandle;
 use std::time::Duration;
 use test_imports::*;
-use crate::local::base_node::LocalNode;
-use crate::network::mock::hub::NetworkHub;
-use crate::network::Network;
-use crate::core::Node;
-use std::sync::{Arc, Mutex};
 
 /// Generates a random identifier.
 ///
@@ -72,7 +67,7 @@ pub fn random_identifier_greater_than(target: &Identifier) -> Identifier {
         ZERO => random_identifier(),
         MAX => {
             // If the target is the maximum identifier, we cannot generate a greater one.
-            panic!("Cannot generate a random identifier greater than the maximum identifier.");
+            panic!("cannot generate a random identifier greater than the maximum identifier.");
         }
         _ => {
             // Keep making the bytes from the target identifier greater until we have a valid identifier.
@@ -84,7 +79,7 @@ pub fn random_identifier_greater_than(target: &Identifier) -> Identifier {
                 }
             }
             Identifier::from_bytes(&bytes).unwrap_or_else(|_| {
-                panic!("Failed to create a valid identifier from bytes: {bytes:?}")
+                panic!("failed to create a valid identifier from bytes: {bytes:?}")
             })
         }
     }
@@ -136,7 +131,7 @@ pub fn random_identifier_less_than(target: &Identifier) -> Identifier {
     match *target {
         ZERO => {
             // If the target is zero, we cannot generate a lesser identifier.
-            panic!("Cannot generate a random identifier less than zero.");
+            panic!("cannot generate a random identifier less than zero.");
         }
         MAX => random_identifier(),
         _ => {
@@ -150,7 +145,7 @@ pub fn random_identifier_less_than(target: &Identifier) -> Identifier {
             }
 
             Identifier::from_bytes(&bytes).unwrap_or_else(|_| {
-                panic!("Failed to create a valid identifier from bytes: {bytes:?}")
+                panic!("failed to create a valid identifier from bytes: {bytes:?}")
             })
         }
     }
@@ -172,9 +167,7 @@ pub fn random_identifier_less_than(target: &Identifier) -> Identifier {
 /// The `Identifier` type and the `random_identifier` function must be properly
 /// defined in the scope where this function is used.
 pub fn random_sorted_identifiers(n: usize) -> Vec<Identifier> {
-    let mut ids = (0..n)
-        .map(|_| random_identifier())
-        .collect::<Vec<Identifier>>();
+    let mut ids: Vec<Identifier> = (0..n).map(|_| random_identifier()).collect();
     ids.sort();
     ids
 }
@@ -299,8 +292,8 @@ pub fn random_lookup_table(n: usize) -> ArrayLookupTable {
     let lt = ArrayLookupTable::new(&span_fixture());
     let ids = random_identities(2 * n);
     for i in 0..n {
-        lt.update_entry(ids[i].clone(), i, Direction::Left).unwrap();
-        lt.update_entry(ids[i + n].clone(), i, Direction::Right)
+        lt.update_entry(ids[i], i, Direction::Left).unwrap();
+        lt.update_entry(ids[i + n], i, Direction::Right)
             .unwrap();
     }
     lt
@@ -361,7 +354,7 @@ where
     for handle in handles {
         let elapsed = start.elapsed();
         if elapsed >= timeout {
-            return Err("Timeout".to_string());
+            return Err("timeout".to_string());
         }
 
         // Remaining time to wait for this thread to finish
@@ -404,13 +397,13 @@ where
     });
 
     if let Ok(join_res) = rx.recv_timeout(timeout) {
-        join_thread.join().expect("Failed to join thread");
+        join_thread.join().expect("failed to join thread");
         match join_res {
             Ok(_) => Ok(()),
-            Err(e) => Err(format!("Thread panicked: {e:?}")),
+            Err(e) => Err(format!("thread panicked: {e:?}")),
         }
     } else {
-        Err("Thread timed out".to_string())
+        Err("thread timed out".to_string())
     }
 }
 
@@ -433,80 +426,8 @@ pub fn span_fixture() -> tracing::Span {
     // Create a new tracing span with the name "test_span" at TRACE level.
     // Subscriber level controls the minimum log level to display (e.g., DEBUG shows debug and above).
     // Log macros inside spans determine the actual log level of each event.
-    // This span level is just a label for grouping and doesn't influence what gets logged.
+    // This span level is just a label for grouping and doesn’t influence what gets logged.
     tracing::span!(tracing::Level::TRACE, "test_span")
-}
-
-/// Creates a complete skip graph with n nodes connected via MockNetwork.
-/// 
-/// This function creates a fully connected skip graph where:
-/// - All nodes have unique sorted identifiers
-/// - Each node has a random membership vector
-/// - All nodes are connected through a shared NetworkHub
-/// - Nodes insert themselves one by one using the join algorithm
-/// - The first node becomes the introducer for subsequent nodes
-/// 
-/// # Arguments
-/// * `n` - The number of nodes to create in the skip graph
-/// 
-/// # Returns
-/// A tuple containing:
-/// - Vector of LocalNode instances representing the skip graph nodes
-/// - The shared NetworkHub used for communication
-/// 
-/// # Panics
-/// This function will panic if:
-/// - n is 0 (cannot create an empty skip graph)
-/// - Network operations fail during node creation or joining
-/// 
-pub fn new_local_skip_graph(n: usize) -> anyhow::Result<(Vec<LocalNode>, Arc<Mutex<NetworkHub>>)> {
-    if n == 0 {
-        return Err(anyhow::anyhow!("Cannot create skip graph with 0 nodes"));
-    }
-
-    let _span = span_fixture();
-    
-    // Create a shared network hub for all nodes
-    let hub = NetworkHub::new();
-    
-    // Generate sorted identifiers for all nodes to ensure proper ordering
-    let identifiers = random_sorted_identifiers(n);
-    let mut nodes = Vec::with_capacity(n);
-    
-    // Create all nodes first
-    for &id in &identifiers {
-        let mem_vec = random_membership_vector();
-        let lt = Box::new(ArrayLookupTable::new(&span_fixture()));
-        
-        // Create network for this node and register it with the hub
-        let network = NetworkHub::new_mock_network(hub.clone(), id)?;
-        
-        // Create the LocalNode with network capability
-        let node = LocalNode::new(id, mem_vec, lt, network.clone());
-        
-        // Register the node as a message processor for its network
-        // TODO: a node registering itself as processor to network must be done internally in the node 
-        let node_processor = Arc::new(Mutex::new(node.clone()));
-        network
-            .lock()
-            .map_err(|_| anyhow::anyhow!("Failed to acquire network lock"))?
-            .register_processor(Box::new(node_processor))?;
-        
-        nodes.push(node);
-    }
-    
-    // Now perform the join operations to build the skip graph structure
-    if !nodes.is_empty() {
-        // TODO: consider using a random node each time as the introducer
-        // The first node is already in the skip graph (it's the introducer)
-        for i in 1..nodes.len() {
-            let introducer = nodes[0].clone();
-            nodes[i].join(std::rc::Rc::new(introducer))?;
-        }
-    }
-    
-    tracing::debug!("Successfully created skip graph with {} nodes", n);
-    Ok((nodes, hub))
 }
 
 mod test {
@@ -570,7 +491,7 @@ mod test {
         }
         assert!(
             failure_count < 1000,
-            "Failed to generate greater identifiers for all targets."
+            "failed to generate greater identifiers for all targets."
         );
     }
 
@@ -613,7 +534,67 @@ mod test {
         }
         assert!(
             failure_count < 1000,
-            "Failed to generate lesser identifiers for all targets."
+            "failed to generate lesser identifiers for all targets."
         );
     }
+}
+
+/// Waits until a condition becomes true within a specified timeout period.
+/// This utility is designed for testing scenarios where you need to verify that
+/// some asynchronous behavior occurs within a reasonable time frame.
+///
+/// Uses a channel-based approach with cooperative
+/// scheduling via `yield_now()` to be CPU-friendly while maintaining responsiveness.
+///
+/// # Arguments
+/// * `condition` - A closure that returns true when the expected condition is met
+/// * `timeout` - Maximum time to wait for the condition to become true
+///
+/// # Returns
+/// * `Ok(())` if the condition becomes true within the timeout
+/// * `Err(String)` if the timeout is exceeded before the condition is met
+///
+/// # Example
+/// ```ignore
+/// // Wait for a context to be cancelled within 100ms
+/// wait_until(
+///     || context.is_cancelled(),
+///     Duration::from_millis(100)
+/// ).await.expect("context should be cancelled within 100ms");
+/// ```
+pub async fn wait_until<F>(
+    mut condition: F,
+    timeout: Duration,
+) -> Result<(), String>
+where
+    F: FnMut() -> bool + Send + 'static,
+{
+    let (tx, rx) = tokio::sync::oneshot::channel::<Result<(), String>>();
+
+    // Spawn a single task that polls the condition and sends the result
+    let condition_task = tokio::task::spawn_blocking(move || {
+        loop {
+            if condition() {
+                // Condition met - send success and return
+                if tx.send(Ok(())).is_err() {
+                    // Receiver dropped, but we're done anyway
+                }
+                return;
+            }
+            // Cooperative scheduling - yield to other threads
+            std::thread::yield_now();
+        }
+    });
+
+    // Wait for the result with timeout
+    let result = match tokio::time::timeout(timeout, rx).await {
+        Ok(Ok(result)) => result,
+        Ok(Err(_)) => Err("channel closed unexpectedly".to_string()),
+        Err(_) => Err(format!("condition not met within timeout of {:?}", timeout)),
+    };
+
+    // Clean up the task if it's still running
+    condition_task.abort();
+
+    result
 }

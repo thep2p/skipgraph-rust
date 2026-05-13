@@ -1,24 +1,28 @@
-use std::sync::{Arc, Mutex};
-use crate::network::{Message, MessageProcessor, Network};
+use crate::core::Identifier;
+use crate::network::{Event, MessageProcessor, Network};
 
 /// NoopNetwork is a mock implementation of the Network trait that does not perform any operations.
-/// It is used for testing purposes where no actual network operations are needed.
-struct  NoopNetwork {
-
-}
+/// It is used for testing scenarios where a Network is required but its behaviour is irrelevant.
+#[allow(dead_code)]
+pub struct NoopNetwork;
 
 impl Network for NoopNetwork {
-    fn send_message(&self, _message: Message) -> anyhow::Result<()> {
+    fn send_event(&self, _target_id: Identifier, _event: Event) -> anyhow::Result<()> {
         Ok(())
     }
 
-    fn register_processor(&mut self, _processor: Box<Arc<Mutex<dyn MessageProcessor>>>) -> anyhow::Result<()> {
+    fn register_processor(&self, _processor: MessageProcessor) -> anyhow::Result<()> {
         Ok(())
+    }
+
+    fn clone_box(&self) -> Box<dyn Network> {
+        Box::new(NoopNetwork)
     }
 }
 
-/// Creates a new instance of NoopNetwork wrapped in an Arc and Mutex.
-/// This is useful for testing scenarios where a network implementation is required but no actual operations are needed
-pub(crate) fn new_noop_network() -> Arc<Mutex<dyn Network>> {
-    Arc::new(Mutex::new(NoopNetwork {}))
+/// Creates a new boxed NoopNetwork suitable for tests that need to satisfy the
+/// `Network` trait without exercising real routing.
+#[allow(dead_code)]
+pub fn new_noop_network() -> Box<dyn Network> {
+    Box::new(NoopNetwork)
 }

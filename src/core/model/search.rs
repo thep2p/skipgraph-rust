@@ -1,5 +1,35 @@
-use crate::core::lookup::lookup_table::LookupTableLevel;
+use crate::core::lookup::LookupTableLevel;
+use crate::core::model::direction::Direction;
 use crate::core::Identifier;
+
+#[derive(Debug, Copy, Clone)]
+pub struct IdSearchReq {
+    pub target: Identifier,
+    pub level: LookupTableLevel,
+    pub direction: Direction,
+}
+
+impl IdSearchReq {
+    pub fn new(target: Identifier, level: LookupTableLevel, direction: Direction) -> Self {
+        IdSearchReq {
+            target,
+            level,
+            direction,
+        }
+    }
+
+    pub fn target(&self) -> &Identifier {
+        &self.target
+    }
+
+    pub fn level(&self) -> LookupTableLevel {
+        self.level
+    }
+
+    pub fn direction(&self) -> Direction {
+        self.direction
+    }
+}
 
 /// A struct representing the result of an identifier search within lookup table of current node.
 ///
@@ -12,14 +42,14 @@ use crate::core::Identifier;
 ///
 /// This struct derives the `Debug` trait, enabling it to be formatted using the `{:?}` formatter
 /// for debugging purposes.
-#[derive(Debug)]
-pub struct IdentifierSearchResult {
+#[derive(Debug, Copy, Clone)]
+pub struct IdSearchRes {
     target: Identifier,
     termination_level: LookupTableLevel,
     result: Identifier,
 }
 
-impl IdentifierSearchResult {
+impl IdSearchRes {
     /// Constructs a new `IdentifierSearchResult` instance.
     ///
     /// # Parameters
@@ -33,7 +63,7 @@ impl IdentifierSearchResult {
     /// Returns a new `IdentifierSearchResult` instance populated with the provided `target`, `level`,
     /// and `result` parameters.
     pub fn new(target: Identifier, level: LookupTableLevel, result: Identifier) -> Self {
-        IdentifierSearchResult {
+        IdSearchRes {
             target,
             termination_level: level,
             result,

@@ -3,8 +3,16 @@ use anyhow::{anyhow, Context};
 use std::fmt;
 use std::fmt::{Debug, Display, Formatter};
 
-#[derive(Clone, Copy, PartialEq, Eq)]
+#[derive(Copy, PartialEq, Eq)]
 pub struct MembershipVector([u8; model::IDENTIFIER_SIZE_BYTES]);
+
+#[allow(useless_deprecated)]
+impl Clone for MembershipVector {
+    #[deprecated(note = "This type is Copy; prefer implicit copying instead of .clone()")]
+    fn clone(&self) -> Self {
+        *self
+    }
+}
 
 /// A struct representing a membership vector with a fixed size of 32 bytes.
 impl MembershipVector {
@@ -20,7 +28,7 @@ impl MembershipVector {
     pub fn from_bytes(bytes: &[u8]) -> anyhow::Result<MembershipVector> {
         if bytes.len() > model::IDENTIFIER_SIZE_BYTES {
             Err(anyhow!(
-                "Membership Vector size is too large, expected {} bytes, got {} bytes",
+                "membership vector size is too large, expected {} bytes, got {} bytes",
                 model::IDENTIFIER_SIZE_BYTES,
                 bytes.len()
             ))
@@ -42,17 +50,26 @@ impl MembershipVector {
     ///
     /// * `anyhow::Result<MembershipVector>` - The resulting MembershipVector or an error if the input is invalid.
     pub fn from_string(s: &str) -> anyhow::Result<MembershipVector> {
-        let bytes = hex::decode(s).context("Failed to decode hex string")?;
+        let bytes = hex::decode(s).context("failed to decode hex string")?;
         MembershipVector::from_bytes(&bytes)
     }
 
     /// Converts the input string into a bit string.
     pub fn to_bit_string(&self) -> String {
-        self.0
-            .iter()
-            .map(|&b| format!("{b:08b}"))
-            .collect::<Vec<_>>()
-            .join(" ")
+        use std::fmt::Write;
+        let mut result = String::with_capacity(self.0.len() * 9); // 8 bits + 1 space per byte
+        for (i, &b) in self.0.iter().enumerate() {
+            if i > 0 {
+                result.push(' ');
+            }
+            write!(result, "{b:08b}").expect("writing to String should never fail");
+        }
+        result
+    }
+
+    /// Returns a reference to the underlying byte array.
+    pub fn as_bytes(&self) -> &[u8] {
+        &self.0
     }
 
     /// Converts the MembershipVector into a byte slice.
@@ -60,6 +77,8 @@ impl MembershipVector {
     /// # Returns
     ///
     /// * `Vec<u8>` - A vector containing the bytes of the MembershipVector.
+    /// 
+    /// Consider using `as_bytes()` if you don't need ownership.
     pub fn to_bytes(&self) -> Vec<u8> {
         self.0.to_vec()
     }
@@ -120,7 +139,7 @@ impl MembershipVector {
             return (
                 hex::encode(left_prefix),
                 format!("{:08b}", self.0[prefix_byte_index]),
-                "".to_string(),
+                String::new(),
             );
         }
 
@@ -189,12 +208,12 @@ mod test {
     #[test]
     fn test_membership_vector_from_string() {
         // 32 bytes of zeros
-        let s = hex::encode(vec![0; model::IDENTIFIER_SIZE_BYTES]).to_string();
+        let s = hex::encode(vec![0; model::IDENTIFIER_SIZE_BYTES]);
         let mv = MembershipVector::from_string(&s).unwrap();
         assert_eq!(mv.to_bytes(), vec![0; model::IDENTIFIER_SIZE_BYTES]);
 
         // 32 bytes of ones
-        let s = hex::encode(vec![255u8; model::IDENTIFIER_SIZE_BYTES]).to_string();
+        let s = hex::encode(vec![255u8; model::IDENTIFIER_SIZE_BYTES]);
         let mv = MembershipVector::from_string(&s).unwrap();
         assert_eq!(mv.to_bytes(), vec![255u8; model::IDENTIFIER_SIZE_BYTES]);
 
@@ -429,9 +448,9 @@ mod test {
         pivot_index: usize,
         (left, pivot, right): (String, String, String),
     ) {
-        let expected_left = hex::encode(&mv.to_bytes()[0..pivot_index / 8]).to_string();
+        let expected_left = hex::encode(&mv.to_bytes()[0..pivot_index / 8]);
         let expected_pivot = format!("{:08b}", mv.to_bytes()[pivot_index / 8]);
-        let expected_right = hex::encode(&mv.to_bytes()[pivot_index / 8 + 1..]).to_string();
+        let expected_right = hex::encode(&mv.to_bytes()[pivot_index / 8 + 1..]);
 
         assert_eq!(left, expected_left, "p: {pivot_index}");
         assert_eq!(pivot, expected_pivot, "p: {pivot_index}");
