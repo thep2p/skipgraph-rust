@@ -1,9 +1,11 @@
 use super::base_node::BaseNode;
 use crate::core::model::direction::Direction;
+use crate::core::model::identity::Identity;
 use crate::core::testutil::fixtures::{
-    join_all_with_timeout, random_membership_vector, random_sorted_identifiers, span_fixture,
+    join_all_with_timeout, random_membership_vector, random_sorted_identifiers,
+    span_fixture,
 };
-use crate::core::{ArrayLookupTable, IdSearchReq, Identifier, LookupTable};
+use crate::core::{Address, ArrayLookupTable, IdSearchReq, Identifier, LookupTable, LOOKUP_TABLE_LEVELS};
 use crate::network::mock::hub::NetworkHub;
 use crate::network::Network;
 use crate::node::Node;
@@ -32,18 +34,68 @@ fn new_local_skip_graph(
     let hub = NetworkHub::new();
     let identifiers = random_sorted_identifiers(n);
     let mut nodes = Vec::with_capacity(n);
+    let mut lts: Vec<Box<dyn LookupTable>> = Vec::with_capacity(n);
 
     for &id in &identifiers {
         let mem_vec = random_membership_vector();
         let lt: Box<dyn LookupTable> = Box::new(ArrayLookupTable::new(parent_span));
         let network = NetworkHub::new_mock_network(hub.clone(), id)?;
-        let net: Box<dyn Network> = network.clone_box();
-        let node = BaseNode::new(parent_span.clone(), id, mem_vec, lt, net)?;
+        let node = BaseNode::new(
+            parent_span.clone(),
+            id,
+            mem_vec,
+            lt.clone(),
+            network.clone_box(),
+        )?;
         nodes.push(node);
+        lts.push(lt);
     }
 
-    // TODO: invoke join() to actually populate lookup tables once the join
-    // protocol is implemented (currently todo!() in BaseNode::join).
+    // Connects the nodes in a doubly-linked list at level zero, the first node does not have
+    // a previous node and the last node does not have a next node.
+    for (n_pair, lt_pair) in nodes.windows(2).zip(lts.windows(2)) {
+        let this_id = Identity::new(
+            n_pair[1].get_identifier(),
+            n_pair[1].get_membership_vector(),
+            Address::new("localhost", "0"),
+        );
+        let prev_id = Identity::new(
+            n_pair[0].get_identifier(),
+            n_pair[0].get_membership_vector(),
+            Address::new("localhost", "0"),
+        );
+
+        lt_pair[0].update_entry(this_id, 0, Direction::Right)?;
+        lt_pair[1].update_entry(prev_id, 0, Direction::Left)?;
+    }
+
+    for i in 1..n {
+        let mut loop_start = i-1; // exclude i from considering for its own left neighbor
+        for level in 1..LOOKUP_TABLE_LEVELS {
+            let mut neighbor_idx : Option<usize> = None;
+
+            // moves leftward to find a neighbor at the given level
+            for j in (0..=loop_start).rev() {
+                // Invariant: loop_start < i, so j < i throughout — no self-link possible.
+                if nodes[i].get_membership_vector().common_prefix_bit(nodes[j].get_membership_vector()) >= level {
+                    let id_j = Identity::new(nodes[j].get_identifier(), nodes[j].get_membership_vector(), Address::new("localhost", "0"));
+                    let id_i = Identity::new(nodes[i].get_identifier(), nodes[i].get_membership_vector(), Address::new("localhost", "0"));
+                    lts[i].update_entry(id_j, level, Direction::Left)?;
+                    lts[j].update_entry(id_i, level, Direction::Right)?;
+                    neighbor_idx = Some(j);
+                    break;
+                }
+            }
+            match neighbor_idx {
+                // if a neighbor was found, we continue to search at the next level from the same node
+                Some(j) => loop_start = j,
+                // if no neighbor was found, we stop searching at any other level, as we cannot find at least 'level'-bit common prefix,
+                // hence we cannot find > 'level'-bit common prefix for any other level.
+                None => break,
+            }
+        }
+    }
+
 
     Ok((nodes, hub))
 }
@@ -154,7 +206,8 @@ fn test_lookup_tables_validity() {
 #[test]
 fn test_larger_skip_graph() {
     let span = span_fixture();
-    let (nodes, _hub) = new_local_skip_graph(&span, 20).expect("failed to create larger skip graph");
+    let (nodes, _hub) =
+        new_local_skip_graph(&span, 20).expect("failed to create larger skip graph");
     assert_eq!(nodes.len(), 20);
 
     let identifiers: Vec<Identifier> = nodes.iter().map(|n| *n.get_identifier()).collect();
@@ -172,11 +225,7 @@ fn test_larger_skip_graph() {
             continue;
         }
 
-        let search_req = IdSearchReq::new(
-            *nodes[target_idx].get_identifier(),
-            0,
-            Direction::Left,
-        );
+        let search_req = IdSearchReq::new(*nodes[target_idx].get_identifier(), 0, Direction::Left);
         nodes[searcher_idx]
             .search_by_id(&search_req)
             .unwrap_or_else(|e| panic!("sample search {i} failed: {e}"));

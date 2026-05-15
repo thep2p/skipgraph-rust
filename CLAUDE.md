@@ -6,6 +6,10 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 This is a Rust implementation of Skip Graphs - a distributed data structure for efficient P2P network operations. The project is structured as a library crate with core algorithms, local implementations, and testing infrastructure.
 
+## References
+
+- `skip-graphs-paper.pdf` (Aspnes & Shah) — canonical algorithms: search (Algorithm 1, p.6), insert/join (Algorithm 2, p.8), delete (Algorithm 3, p.8).
+
 ## Architecture
 
 The codebase is organized into three main modules:
