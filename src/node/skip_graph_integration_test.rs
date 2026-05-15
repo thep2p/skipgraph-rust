@@ -11,7 +11,6 @@ use crate::node::Node;
 
 struct LocalSkipGraph {
     nodes: Vec<BaseNode>,
-    hub: NetworkHub,
     lts: Vec<Box<dyn LookupTable>>,
     identifiers: Vec<Identifier>,
     mvs: Vec<MembershipVector>,
@@ -99,7 +98,6 @@ impl LocalSkipGraph {
         let mvs = nodes.iter().map(|n| *n.get_membership_vector()).collect();
         Ok(LocalSkipGraph{
             nodes,
-            hub,
             lts,
             identifiers,
            mvs,
@@ -136,6 +134,9 @@ fn test_lookup_tables_validity() {
 fn test_skip_graph_edge_cases() {
     let sg = LocalSkipGraph::new(1).expect("failed to create single-node skip graph");
     assert_eq!(sg.nodes.len(), 1);
+    assert_eq!(sg.identifiers.len(), 1);
+    assert_eq!(sg.mvs.len(), 1);
+    assert_eq!(sg.lts.len(), 1);
 
     let search_req = IdSearchReq::new(*sg.nodes[0].get_identifier(), 0, Direction::Left);
     sg.nodes[0]
