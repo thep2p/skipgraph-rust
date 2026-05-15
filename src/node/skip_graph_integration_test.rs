@@ -11,6 +11,7 @@ use crate::network::Network;
 use crate::node::Node;
 use std::sync::Arc;
 use std::time::Duration;
+use crate::core::model::direction::Direction::Right;
 
 struct LocalSkipGraph {
     nodes: Vec<BaseNode>,
@@ -199,18 +200,28 @@ fn test_concurrent_search_all_nodes() {
         .expect("some concurrent searches timed out or failed");
 }
 
+/// For every (node, level) pair, asserts the Left/Right lookup-table entries
+/// match the closest predecessor/successor whose membership vector shares at
+/// least `level` bits with the node's — computed independently from `mvs`.
 #[test]
 fn test_lookup_tables_validity() {
     let sg = LocalSkipGraph::new(6).expect("failed to create skip graph");
 
-    for (i, node) in sg.nodes.iter().enumerate() {
-        let left_req = IdSearchReq::new(*node.get_identifier(), 0, Direction::Left);
-        let right_req = IdSearchReq::new(*node.get_identifier(), 0, Direction::Right);
+    for (i, lt) in sg.lts.iter().enumerate() {
+        for level in 0..LOOKUP_TABLE_LEVELS {
+            // find the max j < i: common_prefix_bit(m_i, m_j) ≥ level
+            let expected_left: Option<usize> = (0..i).rev().find(|&j| sg.mvs[i].common_prefix_bit(&sg.mvs[j])>= level);
 
-        node.search_by_id(&left_req)
-            .unwrap_or_else(|e| panic!("node {i} failed left search: {e}"));
-        node.search_by_id(&right_req)
-            .unwrap_or_else(|e| panic!("node {i} failed right search: {e}"));
+            let expected_left_neighbor_id = expected_left.map(|j| *sg.nodes[j].get_identifier());
+            let actual_left_neighbor_id = lt.get_entry(level, Direction::Left).expect("get_entry should never error").map(|identity| *identity.id());
+            assert_eq!(actual_left_neighbor_id, expected_left_neighbor_id, "left lookup table entry is not valid");
+
+            // find the min i < k: common_prefix_bit(m_i, m_j) >= level
+            let expected_right: Option<usize> = (i + 1..sg.nodes.len()).find(|&j| sg.mvs[i].common_prefix_bit(&sg.mvs[j]) >= level);
+            let expected_right_neighbor_id = expected_right.map(|j| *sg.nodes[j].get_identifier());
+            let actual_right_neighbor_id = lt.get_entry(level, Direction::Right).expect("get_entry should never error").map(|identity| *identity.id());
+            assert_eq!(actual_right_neighbor_id, expected_right_neighbor_id, "right lookup table entry is not valid");
+        }
     }
 }
 
@@ -243,8 +254,6 @@ fn test_larger_skip_graph() {
 
 #[test]
 fn test_skip_graph_edge_cases() {
-    let span = span_fixture();
-
     let sg = LocalSkipGraph::new(1).expect("failed to create single-node skip graph");
     assert_eq!(sg.nodes.len(), 1);
 
