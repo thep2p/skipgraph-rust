@@ -100,7 +100,7 @@ impl LocalSkipGraph {
             nodes,
             lts,
             identifiers,
-           mvs,
+            mvs,
         })
     }
 }
@@ -121,7 +121,7 @@ fn test_lookup_tables_validity() {
             let actual_left_neighbor_id = lt.get_entry(level, Direction::Left).expect("get_entry should never error").map(|identity| *identity.id());
             assert_eq!(actual_left_neighbor_id, expected_left_neighbor_id, "left lookup table entry is not valid");
 
-            // find the min i < k: common_prefix_bit(m_i, m_j) >= level
+            // find the min j > i: common_prefix_bit(m_i, m_j) >= level
             let expected_right: Option<usize> = (i + 1..sg.nodes.len()).find(|&j| sg.mvs[i].common_prefix_bit(&sg.mvs[j]) >= level);
             let expected_right_neighbor_id = expected_right.map(|j| *sg.nodes[j].get_identifier());
             let actual_right_neighbor_id = lt.get_entry(level, Direction::Right).expect("get_entry should never error").map(|identity| *identity.id());
