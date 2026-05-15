@@ -18,16 +18,13 @@ struct LocalSkipGraph {
 }
 
 impl LocalSkipGraph {
-    /// Creates a fully wired set of `n` `BaseNode`s sharing a single `NetworkHub`.
-    ///
-    /// Each node has a unique, sorted identifier and a random membership vector, and
-    /// registers itself as the event processor on its own mock network. The current
-    /// `join` protocol is a placeholder (see `BaseNode::join`), so lookup tables
-    /// remain empty. Searches therefore rely on the documented fallback that
-    /// returns the searcher's own identifier when no neighbor matches. The
-    /// integration tests assert against that fallback, so the helper is sufficient
-    /// for verifying that node construction, network registration, and the search
-    /// code path work end-to-end.
+    /// Builds a fully wired `n`-node skip graph for testing, sharing a single
+    /// `NetworkHub`. Each node gets a unique sorted identifier and a random
+    /// membership vector. Lookup tables are populated inline by running
+    /// Algorithm 2 (insert/join, see `skip-graphs-paper.pdf`) — level 0 as a
+    /// doubly-linked list, higher levels linking each node to its closest
+    /// membership-vector prefix-match on either side. Sidesteps the placeholder
+    /// `BaseNode::join` so tests can assert against a correctly-wired graph.
     fn new(n: usize) -> anyhow::Result<Self> {
         if n == 0 {
             return Err(anyhow::anyhow!("cannot create skip graph with 0 nodes"));
