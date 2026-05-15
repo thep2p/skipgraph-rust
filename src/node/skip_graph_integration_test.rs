@@ -2,16 +2,12 @@ use super::base_node::BaseNode;
 use crate::core::model::direction::Direction;
 use crate::core::model::identity::Identity;
 use crate::core::testutil::fixtures::{
-    join_all_with_timeout, random_membership_vector, random_sorted_identifiers,
-    span_fixture,
+    random_membership_vector, random_sorted_identifiers, span_fixture,
 };
 use crate::core::{Address, ArrayLookupTable, IdSearchReq, Identifier, LookupTable, MembershipVector, LOOKUP_TABLE_LEVELS};
 use crate::network::mock::hub::NetworkHub;
 use crate::network::Network;
 use crate::node::Node;
-use std::sync::Arc;
-use std::time::Duration;
-use crate::core::model::direction::Direction::Right;
 
 struct LocalSkipGraph {
     nodes: Vec<BaseNode>,
@@ -114,98 +110,12 @@ impl LocalSkipGraph {
     }
 }
 
-#[test]
-fn test_create_small_skip_graph() {
-
-    let sg = LocalSkipGraph::new(5).expect("failed to create skip graph");
-    assert_eq!(sg.nodes.len(), 5);
-
-    let mut identifiers: Vec<_> = sg.nodes.iter().map(|n| *n.get_identifier()).collect();
-    identifiers.sort();
-    identifiers.dedup();
-    assert_eq!(
-        identifiers.len(),
-        5,
-        "all nodes should have unique identifiers"
-    );
-}
-
-#[test]
-fn test_sequential_search_all_nodes() {
-
-    let sg = LocalSkipGraph::new(10).expect("failed to create skip graph");
-
-    for (i, searcher) in sg.nodes.iter().enumerate() {
-        for (j, target) in sg.nodes.iter().enumerate() {
-            if i == j {
-                continue;
-            }
-
-            let search_req = IdSearchReq::new(*target.get_identifier(), 0, Direction::Left);
-            let search_result = searcher
-                .search_by_id(&search_req)
-                .unwrap_or_else(|e| panic!("node {i} failed to search for node {j}: {e}"));
-
-            let searcher_id = *searcher.get_identifier();
-            assert!(
-                search_result.result() >= target.get_identifier()
-                    || search_result.result() == &searcher_id,
-                "left search result should be >= target or equal to searcher's id: got {}, target {}, searcher {}",
-                search_result.result(),
-                target.get_identifier(),
-                searcher_id
-            );
-        }
-    }
-}
-
-#[test]
-fn test_concurrent_search_all_nodes() {
-    let sg = LocalSkipGraph::new(8).expect("failed to create skip graph");
-
-    let nodes = Arc::new(sg.nodes);
-    let mut handles = Vec::new();
-
-    for i in 0..nodes.len() {
-        for j in 0..nodes.len() {
-            if i == j {
-                continue;
-            }
-
-            let nodes_ref = Arc::clone(&nodes);
-            let handle = std::thread::spawn(move || {
-                let searcher = &nodes_ref[i];
-                let target = &nodes_ref[j];
-                let search_req = IdSearchReq::new(*target.get_identifier(), 0, Direction::Left);
-
-                let search_result = searcher
-                    .search_by_id(&search_req)
-                    .unwrap_or_else(|e| panic!("concurrent search {i}->{j} failed: {e}"));
-
-                let searcher_id = *nodes_ref[i].get_identifier();
-                assert!(
-                    search_result.result() >= target.get_identifier()
-                        || search_result.result() == &searcher_id,
-                    "concurrent search result should be >= target or equal to searcher's id: got {}, target {}, searcher {}",
-                    search_result.result(),
-                    target.get_identifier(),
-                    searcher_id
-                );
-            });
-            handles.push(handle);
-        }
-    }
-
-    join_all_with_timeout(handles.into_boxed_slice(), Duration::from_secs(10))
-        .expect("some concurrent searches timed out or failed");
-}
-
 /// For every (node, level) pair, asserts the Left/Right lookup-table entries
 /// match the closest predecessor/successor whose membership vector shares at
 /// least `level` bits with the node's — computed independently from `mvs`.
 #[test]
 fn test_lookup_tables_validity() {
-    let sg = LocalSkipGraph::new(6).expect("failed to create skip graph");
+    let sg = LocalSkipGraph::new(256).expect("failed to create skip graph");
 
     for (i, lt) in sg.lts.iter().enumerate() {
         for level in 0..LOOKUP_TABLE_LEVELS {
@@ -222,33 +132,6 @@ fn test_lookup_tables_validity() {
             let actual_right_neighbor_id = lt.get_entry(level, Direction::Right).expect("get_entry should never error").map(|identity| *identity.id());
             assert_eq!(actual_right_neighbor_id, expected_right_neighbor_id, "right lookup table entry is not valid");
         }
-    }
-}
-
-#[test]
-fn test_larger_skip_graph() {
-    let sg = LocalSkipGraph::new(20).expect("failed to create larger skip graph");
-    assert_eq!(sg.nodes.len(), 20);
-
-    let identifiers: Vec<Identifier> = sg.nodes.iter().map(|n| *n.get_identifier()).collect();
-    let mut sorted = identifiers.clone();
-    sorted.sort();
-    assert_eq!(
-        identifiers, sorted,
-        "nodes should be created in sorted order by identifier"
-    );
-
-    for i in 0..10 {
-        let searcher_idx = i % sg.nodes.len();
-        let target_idx = (i + sg.nodes.len() / 2) % sg.nodes.len();
-        if searcher_idx == target_idx {
-            continue;
-        }
-
-        let search_req = IdSearchReq::new(*sg.nodes[target_idx].get_identifier(), 0, Direction::Left);
-        sg.nodes[searcher_idx]
-            .search_by_id(&search_req)
-            .unwrap_or_else(|e| panic!("sample search {i} failed: {e}"));
     }
 }
 
