@@ -24,8 +24,8 @@ use unimock::*;
 #[test]
 fn test_search_by_id_singleton_fallback() {
     // Node with identifier 10 and empty lookup table
-    let id = Identifier::from_bytes(&[10u8]).unwrap();
-    let mem_vec = random_membership_vector();
+    let origin_id = Identifier::from_bytes(&[10u8]).unwrap();
+    let origin_mv = random_membership_vector();
     let mock_net = Unimock::new((
         NetworkMock::register_processor
             .each_call(matching!(_))
@@ -36,8 +36,8 @@ fn test_search_by_id_singleton_fallback() {
     ));
     let node = BaseNode::new(
         span_fixture(),
-        id,
-        mem_vec,
+        origin_id,
+        origin_mv,
         Box::new(ArrayLookupTable::new(&span_fixture())),
         Box::new(mock_net),
     )
@@ -52,12 +52,12 @@ fn test_search_by_id_singleton_fallback() {
     ];
 
     for (target, direction) in cases {
-        let req = IdSearchReq::new(target, 3, direction);
+        let req = IdSearchReq::new(origin_id, target, 3, direction);
         let res = node.search_by_id(&req).expect("search failed");
         // Ensures the search is terminated at the level zero.
         assert_eq!(res.termination_level(), 0);
         // Ensures the search result matches the node's identifier; fallback to self
-        assert_eq!(*res.result(), id);
+        assert_eq!(*res.result(), origin_id);
     }
 }
 
@@ -102,7 +102,7 @@ fn test_search_by_id_found_left_direction() {
         .expect("failed to create BaseNode");
 
         let direction = Direction::Left;
-        let req = IdSearchReq::new(target, lvl, direction);
+        let req = IdSearchReq::new(*node.get_identifier(), target, lvl, direction);
 
         let actual_result = node.search_by_id(&req).unwrap();
 
@@ -142,9 +142,6 @@ fn test_search_by_id_found_right_direction() {
         )
         .expect("failed to update entry in lookup table");
 
-        let direction = Direction::Right;
-        let req = IdSearchReq::new(target, lvl, direction);
-
         let mock_net = Unimock::new((
             NetworkMock::register_processor
                 .each_call(matching!(_))
@@ -162,6 +159,9 @@ fn test_search_by_id_found_right_direction() {
             Box::new(mock_net),
         )
         .expect("failed to create BaseNode");
+
+        let direction = Direction::Right;
+        let req = IdSearchReq::new(*node.get_identifier(), target, lvl, direction);
 
         let actual_result = node.search_by_id(&req).unwrap();
 
@@ -241,7 +241,7 @@ fn test_search_by_id_not_found_left_direction() {
         .expect("failed to create BaseNode");
 
         let direction = Direction::Left;
-        let req = IdSearchReq::new(target, lvl, direction);
+        let req = IdSearchReq::new(*node.get_identifier(), target, lvl, direction);
 
         let actual_result = node.search_by_id(&req).unwrap();
 
@@ -313,7 +313,7 @@ fn test_search_by_id_not_found_right_direction() {
         .expect("failed to create BaseNode");
 
         let direction = Direction::Right;
-        let req = IdSearchReq::new(target, lvl, direction);
+        let req = IdSearchReq::new(*node.get_identifier(), target, lvl, direction);
 
         let actual_result = node.search_by_id(&req).unwrap();
 
@@ -362,7 +362,7 @@ fn test_search_by_id_exact_result() {
         for direction in [Direction::Left, Direction::Right] {
             let target_identity = lt.get_entry(lvl, direction).unwrap().unwrap();
             let target = target_identity.id();
-            let req = IdSearchReq::new(*target, lvl, direction);
+            let req = IdSearchReq::new(*node.get_identifier(), *target, lvl, direction);
 
             let actual_result = node.search_by_id(&req).unwrap();
 
@@ -434,7 +434,7 @@ fn test_search_by_id_concurrent_found_left_direction() {
             let lvl = rand::rng().random_range(0..LOOKUP_TABLE_LEVELS);
 
             // Perform the search in the left direction
-            let req = IdSearchReq::new(target, lvl, Direction::Left);
+            let req = IdSearchReq::new(*node_ref.get_identifier(), target, lvl, Direction::Left);
             let actual_result = node_ref.search_by_id(&req).unwrap();
 
             let expected_result = lt_clone
@@ -527,7 +527,7 @@ fn test_search_by_id_concurrent_right_direction() {
             let lvl = rand::rng().random_range(0..LOOKUP_TABLE_LEVELS);
 
             // Perform the search in the right direction
-            let req = IdSearchReq::new(target, lvl, Direction::Right);
+            let req = IdSearchReq::new(*node_ref.get_identifier(), target, lvl, Direction::Right);
             let actual_result = node_ref.search_by_id(&req).unwrap();
 
             let expected_result = lt_clone
@@ -630,7 +630,7 @@ fn test_search_by_id_error_propagation() {
 
     // Create a random search request (any search request will return an error as
     // the mock lookup table is designed to fail)
-    let req = IdSearchReq::new(random_identifier(), 3, Direction::Left);
+    let req = IdSearchReq::new(*node.get_identifier(), random_identifier(), 3, Direction::Left);
 
     // Execute the search and verify that an error is returned
     let result = node.search_by_id(&req);
@@ -684,7 +684,7 @@ fn test_search_by_id_networking_integration() {
     let node_id = random_identifier();
 
     // Create the search request event
-    let search_request = IdSearchReq::new(target, 0, Direction::Left);
+    let search_request = IdSearchReq::new(node_id, target, 0, Direction::Left);
     let request_event = Event::IdSearchRequest(search_request);
     
     // Mock the network to capture sent events

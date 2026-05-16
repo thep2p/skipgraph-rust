@@ -138,7 +138,7 @@ fn test_skip_graph_edge_cases() {
     assert_eq!(sg.mvs.len(), 1);
     assert_eq!(sg.lts.len(), 1);
 
-    let search_req = IdSearchReq::new(*sg.nodes[0].get_identifier(), 0, Direction::Left);
+    let search_req = IdSearchReq::new(*sg.nodes[0].get_identifier(), *sg.nodes[0].get_identifier(), 0, Direction::Left);
     sg.nodes[0]
         .search_by_id(&search_req)
         .expect("single node should be able to search for itself");

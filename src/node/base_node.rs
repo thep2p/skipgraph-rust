@@ -178,24 +178,25 @@ impl EventProcessorCore for BaseNode {
 
         match event {
             IdSearchRequest(req) => {
-                tracing::trace!(
-                    "received IdSearchRequest for target {:?}, direction {:?}, level {}",
-                    req.target(),
-                    req.direction(),
-                    req.level()
-                );
+                let span = tracing::trace_span!("search_by_id_request", origin = ?origin_id, target = ?req.target(), direction = ?req.direction(), level = ?req.level());
+                let _enter = span.enter();
+                tracing::trace!("received request");
 
                 let res = self.search_by_id(&req).map_err(|e| anyhow!("failed to perform search by id {}", e))?;
                 let response_event = IdSearchResponse(res);
 
-                tracing::trace!(
-                    "sending IdSearchResponse with result {:?} at level {}",
-                    res.result(),
-                    res.termination_level()
-                );
+                let span = tracing::trace_span!("terminating", result = ?res.result(), termination_level = ?res.termination_level());
+                let _enter = span.enter();
 
-                // TODO: https://github.com/thep2p/skipgraph-rust/issues/43
-                self.net.send_event(origin_id, response_event).map_err(|e| anyhow!("failed to send response event for search by id: {}", e))?;
+                if res.result() == self.get_identifier() {
+                    self.net.send_event(*req.origin(), response_event).map_err(|e| anyhow!("failed to send response event for search by id: {}", e))?;
+                    tracing::info!("found self in search by id for, terminated the search result");
+                    return Ok(())
+                }
+
+                let relay_request = IdSearchRequest(IdSearchReq::new(*req.origin(), *req.target(), res.termination_level(), req.direction()));
+                self.net.send_event(*res.result(), relay_request).map_err(|e| anyhow!("failed to send relay response event for search by id: {}", e))?;
+                tracing::info!("relayed search by id request to the next node");
                 Ok(())
             }
             IdSearchResponse(res) => {
