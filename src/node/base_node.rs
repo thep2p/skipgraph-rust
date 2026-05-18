@@ -9,6 +9,7 @@ use crate::node::Node;
 use anyhow::anyhow;
 use std::fmt;
 use std::fmt::Formatter;
+use std::sync::{mpsc::SyncSender, Arc, Mutex};
 use tracing::Span;
 use crate::network::Event::{IdSearchRequest, IdSearchResponse};
 
@@ -22,6 +23,7 @@ pub(crate) struct BaseNode {
     net: Box<dyn Network>,
     span: Span,
     ctx: IrrevocableContext,
+    ch: Arc<Mutex<Option<SyncSender<IdSearchRes>>>>,
 }
 
 impl Node for BaseNode {
@@ -249,6 +251,7 @@ impl BaseNode {
             net,
             span: span.clone(),
             ctx,
+            ch: Arc::new(Mutex::new(None)),
         };
 
         // Create a MessageProcessor from this node, instead of casting directly
@@ -302,6 +305,7 @@ impl Clone for BaseNode {
             net: self.net.clone(),
             span: self.span.clone(),
             ctx: self.ctx.clone(),
+            ch:  self.ch.clone(),
         }
     }
 }
@@ -314,20 +318,24 @@ mod tests {
     };
     use crate::core::ArrayLookupTable;
     use unimock::*;
+    use crate::network::NetworkMock;
 
     #[test]
     fn test_base_node() {
         let id = random_identifier();
         let mem_vec = random_membership_vector();
         let span = span_fixture();
-        let node = BaseNode {
-            id,
-            mem_vec,
-            lt: Box::new(ArrayLookupTable::new(&span)),
-            net: Box::new(Unimock::new(())), // No expectations needed for direct struct construction
-            span: span.clone(),
-            ctx: IrrevocableContext::new(&span, "base_node_test_context"),
-        };
+
+        let mock_net = Unimock::new((
+            NetworkMock::register_processor
+                .each_call(matching!(_))
+                .answers(&|_, _| Ok(())),
+            NetworkMock::clone_box
+                .each_call(matching!())
+                .answers(&|mock| Box::new(mock.clone())),
+        ));
+
+        let node = BaseNode::new(span.clone(), id, mem_vec, Box::new(ArrayLookupTable::new(&span)), Box::new(mock_net)).unwrap();
         assert_eq!(node.get_identifier(), &id);
         assert_eq!(node.get_membership_vector(), &mem_vec);
     }

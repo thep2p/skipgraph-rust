@@ -10,11 +10,11 @@ use crate::core::{
     ArrayLookupTable, IdSearchReq, Identifier, LookupTable, LookupTableLevel, LOOKUP_TABLE_LEVELS,
 };
 
-use crate::network::{EventProcessorCore, NetworkMock, Event};
+use crate::network::{Event, EventProcessorCore, NetworkMock};
 use crate::node::Node;
 use anyhow::anyhow;
 use rand::Rng;
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
 use unimock::*;
 
 // TODO: move other tests from base_node.rs here
@@ -630,7 +630,12 @@ fn test_search_by_id_error_propagation() {
 
     // Create a random search request (any search request will return an error as
     // the mock lookup table is designed to fail)
-    let req = IdSearchReq::new(*node.get_identifier(), random_identifier(), 3, Direction::Left);
+    let req = IdSearchReq::new(
+        *node.get_identifier(),
+        random_identifier(),
+        3,
+        Direction::Left,
+    );
 
     // Execute the search and verify that an error is returned
     let result = node.search_by_id(&req);
@@ -662,8 +667,6 @@ fn test_search_by_id_error_propagation() {
 /// and verifies that it correctly processes IdSearchRequest events and sends IdSearchResponse events through a mock networking.
 #[test]
 fn test_search_by_id_networking_integration() {
-    static EVENT_CAPTURE: std::sync::OnceLock<Arc<Mutex<Vec<Event>>>> = std::sync::OnceLock::new();
-    
     let lt = random_lookup_table_with_extremes(LOOKUP_TABLE_LEVELS);
     let target = random_identifier();
 
@@ -680,28 +683,38 @@ fn test_search_by_id_networking_integration() {
         Direction::Left,
     )
     .expect("failed to update entry in lookup table");
-    
+
     let node_id = random_identifier();
 
     // Create the search request event
     let search_request = IdSearchReq::new(node_id, target, 0, Direction::Left);
     let request_event = Event::IdSearchRequest(search_request);
-    
-    // Mock the network to capture sent events
-    let sent_events = Arc::new(Mutex::new(Vec::new()));
-    EVENT_CAPTURE.set(sent_events.clone()).unwrap();
-    
+
+    let (expected_lvl, expected_identity) = lt
+        .left_neighbors()
+        .unwrap()
+        .into_iter()
+        .filter(|(l, id)| *l <= search_request.level() && id.id() >= search_request.target())
+        .min_by_key(|(_, id)| *id.id())
+        .unwrap();
+
     let mock_net = Unimock::new((
         NetworkMock::register_processor
             .each_call(matching!(_))
             .answers(&|_, _| Ok(())),
         NetworkMock::send_event
             .each_call(matching!(_))
-            .answers(&|_, _id: Identifier,  event: Event| {
-                // TODO: capture must be based on (id, event)
-                EVENT_CAPTURE.get().unwrap().lock().unwrap().push(event);
-                Ok(())
-            }),
+            .answers_arc(Arc::new(
+                move |_, id: Identifier, event: Event| match event {
+                    Event::IdSearchRequest(req) => {
+                        assert_eq!(req.level(), expected_lvl);
+                        assert_eq!(id, *expected_identity.id());
+                        Ok(())
+                    }
+                    _ => panic!("expected IdSearchResponse payload, got: {:?}", event),
+                },
+            ))
+            .once(),
         NetworkMock::clone_box
             .each_call(matching!())
             .answers(&|mock| Box::new(mock.clone())),
@@ -721,39 +734,4 @@ fn test_search_by_id_networking_integration() {
     let origin_id = random_identifier();
     node.process_incoming_event(origin_id, request_event)
         .expect("failed to process request event");
-    
-    // Verify exactly one response event was sent
-    let events = sent_events.lock().unwrap();
-    assert_eq!(events.len(), 1, "expected exactly one response event");
-
-    // Verify the response payload
-    match &events[0] {
-        Event::IdSearchResponse(response) => {
-            // Calculate expected result using the same logic as the original test
-            let (expected_lvl, expected_identity) = lt
-                .left_neighbors()
-                .unwrap()
-                .into_iter()
-                .filter(|(l, id)| {
-                    *l <= search_request.level() && id.id() >= search_request.target()
-                })
-                .min_by_key(|(_, id)| *id.id())
-                .unwrap();
-
-            assert_eq!(
-                expected_lvl,
-                response.termination_level(),
-                "response should have correct termination level"
-            );
-            assert_eq!(
-                *expected_identity.id(),
-                *response.result(),
-                "response should have correct result identifier"
-            );
-        }
-        _ => panic!(
-            "expected IdSearchResponse payload, got: {:?}",
-            events[0]
-        ),
-    }
 }
