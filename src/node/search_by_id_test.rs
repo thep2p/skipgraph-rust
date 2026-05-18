@@ -637,3 +637,54 @@ fn test_search_by_id_networking_integration_relay() {
     node.process_incoming_event(origin_id, request_event)
         .expect("failed to process request event");
 }
+
+/// Verifies the node, acting as an `EventProcessor` responses with an `IdSearchResponse` event to the originator when
+/// this node id is equal to the search target.
+#[test]
+fn test_search_by_id_networking_integration_target_is_this_node() {
+    let lt = random_lookup_table_with_extremes(LOOKUP_TABLE_LEVELS);
+
+    let origin_id = random_identifier();
+    let node_id = random_identifier();
+
+    // Create the search request event
+    let search_request = IdSearchReq::new(origin_id, node_id, 0, Direction::Left);
+    let request_event = Event::IdSearchRequest(search_request);
+
+    let mock_net = Unimock::new((
+        NetworkMock::register_processor
+            .each_call(matching!(_))
+            .answers(&|_, _| Ok(())),
+        NetworkMock::send_event
+            .each_call(matching!(_))
+            .answers_arc(Arc::new(
+                move |_, id: Identifier, event: Event| match event {
+                    Event::IdSearchResponse(res) => {
+                        assert_eq!(id, origin_id, "expected result to be to the originator's identifier");
+                        assert_eq!(*res.result(), node_id, "expected result to be the node's identifier");
+                        Ok(())
+                    }
+                    _ => panic!("expected IdSearchResponse payload, got: {:?}", event),
+                },
+            ))
+            .once(),
+        NetworkMock::clone_box
+            .each_call(matching!())
+            .answers(&|mock| Box::new(mock.clone())),
+    ));
+
+    // Create the BaseNode with mock network
+    let node = BaseNode::new(
+        span_fixture(),
+        node_id,
+        random_membership_vector(),
+        Box::new(lt.clone()),
+        Box::new(mock_net),
+    )
+        .expect("failed to create BaseNode");
+
+    // Process the request event directly through the node's EventProcessorCore implementation
+    let origin_id = random_identifier();
+    node.process_incoming_event(origin_id, request_event)
+        .expect("failed to process request event");
+}
