@@ -18,9 +18,7 @@ use std::sync::Arc;
 use unimock::*;
 
 // TODO: move other tests from base_node.rs here
-/// Tests fallback behavior of `search_by_id` when no neighbors exist.
-/// Each case mirrors a search on a singleton node as described in the behavior
-/// matrix of issue https://github.com/thep2p/skipgraph-rust/issues/22.
+/// Verifies `search_by_id` returns the node itself when its lookup table is empty.
 #[test]
 fn test_search_by_id_singleton_fallback() {
     // Node with identifier 10 and empty lookup table
@@ -61,8 +59,7 @@ fn test_search_by_id_singleton_fallback() {
     }
 }
 
-/// Test that returns the correct candidate when searching in the left direction,
-/// where the smallest identifier greater than or equal to the target should be returned.
+/// Verifies left-direction search returns the smallest neighbor with identifier >= target.
 #[test]
 fn test_search_by_id_found_left_direction() {
     for lvl in 0..LOOKUP_TABLE_LEVELS {
@@ -119,8 +116,7 @@ fn test_search_by_id_found_left_direction() {
     }
 }
 
-/// Test that returns the correct candidate when searching in the right direction,
-/// where the greatest identifier less than or equal to the target should be returned.
+/// Verifies right-direction search returns the greatest neighbor with identifier <= target.
 #[test]
 fn test_search_by_id_found_right_direction() {
     // Iterate through each level and perform a search
@@ -178,27 +174,7 @@ fn test_search_by_id_found_right_direction() {
     }
 }
 
-/// Unit test for the `search_by_id` function with the scenario where the target identifier is not found
-/// in the left direction within the lookup table.
-///
-/// This test ensures that when no suitable candidates are found in the left direction, the function returns
-/// the node's own address (identifier). The test runs for all levels in the lookup table and validates the
-/// behavior.
-///
-/// Test Steps:
-/// 1. Generate a random target identifier.
-/// 2. Iteratively test across all levels of the lookup table.
-/// 3. For each level:
-///    - Populate the left neighbors of the lookup table with entries that all have identifiers
-///      less than the target. This guarantees no potential matches in the left direction for the target.
-///    - Construct a `BaseNode` with the configured lookup table.
-///    - Create a search request aimed at the left direction.
-///    - Invoke the `search_by_id` method using the request.
-///    - Assert that the result matches the node's own identifier, as no better match is expected.
-///
-/// Test Assertions:
-/// - The resulting level of the search result should be `0`, indicating the search exhausted all levels.
-/// - The resulting identifier should match the base node's identifier.
+/// Verifies left-direction search falls back to the node itself when no neighbor satisfies the target.
 #[test]
 fn test_search_by_id_not_found_left_direction() {
     let target = random_identifier();
@@ -250,27 +226,7 @@ fn test_search_by_id_not_found_left_direction() {
     }
 }
 
-/// Unit test for the `search_by_id` function with the scenario where the target identifier is not found
-/// in the right direction within the lookup table.
-///
-/// This test ensures that when no suitable candidates are found in the right direction, the function returns
-/// the node's own address (identifier). The test runs for all levels in the lookup table and validates the
-/// behavior.
-///
-/// Test Steps:
-/// 1. Generate a random target identifier.
-/// 2. Iteratively test across all levels of the lookup table.
-/// 3. For each level:
-///    - Populate the right neighbors of the lookup table with entries that all have identifiers
-///      less than the target. This guarantees no potential matches in the right direction for the target.
-///    - Construct a `BaseNode` with the configured lookup table.
-///    - Create a search request aimed at the right direction.
-///    - Invoke the `search_by_id` method using the request.
-///    - Assert that the result matches the node's own identifier, as no better match is expected.
-///
-/// Test Assertions:
-/// - The resulting level of the search result should be `0`, indicating the search exhausted all levels.
-/// - The resulting identifier should match the base node's identifier.
+/// Verifies right-direction search falls back to the node itself when no neighbor satisfies the target.
 #[test]
 fn test_search_by_id_not_found_right_direction() {
     let target = random_identifier();
@@ -322,19 +278,7 @@ fn test_search_by_id_not_found_right_direction() {
     }
 }
 
-/// Tests the `search_by_id` function of the `BaseNode` struct to verify that it properly returns the exact result
-/// when the target identifier exists in the lookup table at the specified level.
-///
-/// The test performs the following steps:
-/// 1. Creates a random lookup table with a predefined number of levels (`LOOKUP_TABLE_LEVELS`) using helper functions.
-/// 2. Constructs a `BaseNode` instance with a random identifier, membership vector, and the generated lookup table.
-/// 3. Iterates through each level of the lookup table (`LOOKUP_TABLE_LEVELS`) and both `Direction::Left` and `Direction::Right`.
-/// 4. For each level and direction, fetches the expected target identity from the lookup table and constructs an
-///    `IdentifierSearchRequest` with the target `id`, level, and direction.
-/// 5. Calls `search_by_id` on the `BaseNode` instance with the constructed request.
-/// 6. Verifies that the returned result's level matches the expected level and the node identifier matches the target identifier.
-///
-/// This test ensures that the `search_by_id` function works correctly in cases where the exact target identifier is found.
+/// Verifies `search_by_id` returns the exact match when the target exists in the lookup table.
 #[test]
 fn test_search_by_id_exact_result() {
     let lt = random_lookup_table_with_extremes(LOOKUP_TABLE_LEVELS);
@@ -372,25 +316,7 @@ fn test_search_by_id_exact_result() {
     }
 }
 
-/// Tests the `search_by_id` method of a `BaseNode` under concurrent conditions where multiple
-/// threads perform searches in the left direction (`Direction::Left`) simultaneously.
-///
-/// The test:
-/// - Creates a `BaseNode` with a random identifier, random membership vector,
-///   and a lookup table (`RandomLookupTable`).
-/// - Randomly generates a target identifier to search for.
-/// - Spawns 20 threads that conduct searches concurrently from the node.
-///
-/// ### Test Specific Logic:
-/// - Each thread constructs a search request targeting the same identifier and executes the `search_by_id` method.
-/// - The expected search result is derived by finding the closest matching identifier from the
-///   left neighbors in the lookup table (`lt`) that meets the search criteria (e.g., level,
-///   target identifier comparison).
-/// - If no valid neighbor is found, it expects the result to default to the `BaseNode`'s own identifier.
-///
-/// ### Assertions:
-/// - If a valid neighbor exists, the search output should match both the level and identifier.
-/// - If no valid neighbor exists, the search result should match the node's own identifier at level 0.
+/// Verifies left-direction `search_by_id` returns correct results under concurrent access from 20 threads.
 #[test]
 fn test_search_by_id_concurrent_found_left_direction() {
     let lt = random_lookup_table_with_extremes(LOOKUP_TABLE_LEVELS);
@@ -466,25 +392,7 @@ fn test_search_by_id_concurrent_found_left_direction() {
     join_all_with_timeout(handles.into_boxed_slice(), timeout).unwrap();
 }
 
-/// Tests the `search_by_id` method of a `BaseNode` under concurrent conditions where multiple
-/// threads perform searches in the right direction (`Direction::Right`) simultaneously.
-///
-/// The test:
-/// - Creates a `BaseNode` with a random identifier, random membership vector,
-///   and a lookup table (`RandomLookupTable`).
-/// - Randomly generates a target identifier to search for.
-/// - Spawns 20 threads that conduct searches concurrently from the node.
-///
-/// ### Test Specific Logic:
-/// - Each thread constructs a search request targeting the same identifier and executes the `search_by_id` method.
-/// - The expected search result is derived by finding the closest matching identifier from the
-///   right neighbors in the lookup table (`lt`) that meets the search criteria (e.g., level,
-///   target identifier comparison).
-/// - If no valid neighbor is found, it expects the result to default to the `BaseNode`'s own identifier.
-///
-/// ### Assertions:
-/// - If a valid neighbor exists, the search output should match both the level and identifier.
-/// - If no valid neighbor exists, the search result should match the node's own identifier at level 0.
+/// Verifies right-direction `search_by_id` returns correct results under concurrent access from 20 threads.
 #[test]
 fn test_search_by_id_concurrent_right_direction() {
     let lt = random_lookup_table_with_extremes(LOOKUP_TABLE_LEVELS);
@@ -558,11 +466,7 @@ fn test_search_by_id_concurrent_right_direction() {
     join_all_with_timeout(handles.into_boxed_slice(), timeout).unwrap();
 }
 
-/// Test that verifies error handling when the lookup table returns an error during search.
-///
-/// This test creates a mock lookup table that returns an error when queried at a specific level.
-/// It then verifies that the `search_by_id` method properly propagates this error upward rather
-/// than silently failing or returning an unexpected result.
+/// Verifies `search_by_id` propagates errors raised by the underlying lookup table.
 #[test]
 fn test_search_by_id_error_propagation() {
     // Create a mock lookup table that returns an error for specific lookup operations
@@ -662,11 +566,9 @@ fn test_search_by_id_error_propagation() {
     );
 }
 
-/// An integration test that verifies search_by_id functionality through event processing with mock networking.
-/// This is a variation of test_search_by_id_found_left_direction that treats the node as an EventProcessor
-/// and verifies that it correctly processes IdSearchRequest events and sends IdSearchResponse events through a mock networking.
+/// Verifies the node, acting as an `EventProcessor`, relays an `IdSearchRequest` event to the expected neighbor via the network.
 #[test]
-fn test_search_by_id_networking_integration() {
+fn test_search_by_id_networking_integration_relay() {
     let lt = random_lookup_table_with_extremes(LOOKUP_TABLE_LEVELS);
     let target = random_identifier();
 
