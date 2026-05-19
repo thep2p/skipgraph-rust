@@ -1,175 +1,92 @@
-use crate::core::model::direction::Direction;
-use crate::core::{
-    IrrevocableContext, Identifier, IdSearchReq, IdSearchRes, LookupTable, MembershipVector,
-};
+use crate::core::{IdSearchRes, IrrevocableContext, Identifier, MembershipVector};
 #[cfg(test)] // TODO: Remove once BaseNode is used in production code.
 use crate::network::MessageProcessor;
-use crate::network::{EventProcessorCore, Network, Event};
-use crate::node::Node;
+use crate::network::Event::{IdSearchRequest, IdSearchResponse};
+use crate::network::{Event, EventProcessorCore, Network};
+use crate::node::core::Core;
 use anyhow::anyhow;
 use std::fmt;
 use std::fmt::Formatter;
 use std::sync::{mpsc::SyncSender, Arc, Mutex};
 use tracing::Span;
-use crate::network::Event::{IdSearchRequest, IdSearchResponse};
 
 // TODO: Remove #[allow(dead_code)] once BaseNode is used in production code.
 #[allow(dead_code)]
-/// BaseNode is a struct that represents a single node in the implementation of the skip graph.
+/// `BaseNode` is the network-aware orchestrator for a single skip-graph node.
+///
+/// It composes a `Box<dyn Core>` (the pure-local algorithms + lookup table)
+/// with a `Box<dyn Network>` (the transport). All algorithmic work is
+/// delegated to `core`; `BaseNode` is responsible only for wiring outbound
+/// events, parking waiters for blocking originator calls, and routing
+/// incoming events via `EventProcessorCore`.
 pub(crate) struct BaseNode {
-    id: Identifier,
-    mem_vec: MembershipVector,
-    lt: Box<dyn LookupTable>,
+    core: Box<dyn Core>,
     net: Box<dyn Network>,
     span: Span,
     ctx: IrrevocableContext,
     ch: Arc<Mutex<Option<SyncSender<IdSearchRes>>>>,
 }
 
-impl Node for BaseNode {
-    fn get_identifier(&self) -> &Identifier {
-        &self.id
-    }
+impl BaseNode {
+    /// Create a new `BaseNode` from an already-constructed `Core` and a
+    /// network handle. Registers the node as an event processor on the
+    /// network before returning.
+    #[cfg(test)] // TODO: Remove once BaseNode is used in production code.
+    pub(crate) fn new(
+        parent_span: Span,
+        core: Box<dyn Core>,
+        net: Box<dyn Network>,
+    ) -> anyhow::Result<Self> {
+        let clone_net = net.clone();
+        let span = tracing::span!(parent: parent_span, tracing::Level::TRACE, "base_node");
+        let _enter = span.enter();
 
-    fn get_membership_vector(&self) -> &MembershipVector {
-        &self.mem_vec
-    }
-
-    /// Searches for an identifier in a level-based structure in a specific direction.
-    ///
-    /// This function attempts to find an identifier from the given `IdentifierSearchRequest`,
-    /// by scanning through levels up to the specified level in the request and filtering values
-    /// based on the direction. The result is either the best matching identifier or a fallback
-    /// identifier if no matches are found.
-    ///
-    /// # Arguments
-    /// - `req`: A reference to an [`IdSearchReq`] which contains the search criteria,
-    ///   including the target identifier, the direction of the search (`Left` or `Right`), and
-    ///   the level up to which the search should proceed.
-    ///
-    /// # Returns
-    /// An [`anyhow::Result`] containing:
-    /// - `Ok(IdentifierSearchResult)`: The result of the search, including:
-    ///   - The target identifier (as given in the `req`),
-    ///   - The level at which the closest match was found,
-    ///   - The identifier of the closest match (or the current identifier if no close match was found).
-    /// - `Err(anyhow::Error)`: An error if there was an issue while accessing a level or retrieving an entry.
-    ///
-    /// # Behavior
-    /// - The function iterates through the levels from `0` to `req.level()`.
-    /// - For each level, it retrieves an entry from the lookup table matching the
-    ///   direction (`req.direction()`).
-    /// - The entries collected are filtered:
-    ///   - **Left direction**: Finds the smallest identifier greater than or equal to the target.
-    ///   - **Right direction**: Finds the largest identifier less than or equal to the target.
-    /// - If a valid match is found, the associated identifier and level are returned. Otherwise, it falls
-    ///   back and returns its own identifier at level `0`.
-    ///
-    /// # Error Handling
-    /// - If an error occurs while accessing an entry at any level, it immediately halts execution
-    ///   and returns an `anyhow::Error`.
-    ///
-    /// # Notes
-    /// - If no matching identifier is found at any level, the search defaults to returning
-    ///   the caller's own identifier at level `0`. This edge behavior is covered in
-    ///   `search_fallback_test.rs`.
-    /// - The method aims to handle both leftward and rightward searches efficiently. To add support
-    ///   for other directions or additional filtering, alterations may be required within the
-    ///   filtering logic.
-    ///
-    /// # Returns Fields Explanation (via `IdentifierSearchResult`)
-    /// - `target_id`: Copy of the target identifier for traceability purposes.
-    /// - `level`: Indicates the level at which the match was found.
-    /// - `matched_id`: The identifier of the closest match or fallback identifier.
-    fn search_by_id(
-        &self,
-        req: &IdSearchReq,
-    ) -> anyhow::Result<IdSearchRes> {
-        let _enter = self.span.enter();
-        tracing::trace!(
-            "starting search_by_id for target {:?}, direction {:?}, max_level {}",
-            req.target(),
-            req.direction(),
-            req.level()
-        );
-
-        // Collect neighbors from levels <= req.level in req.direction
-        let candidates: Result<Vec<_>, _> = (0..=req.level())
-            .filter_map(|lvl| match self.lt.get_entry(lvl, req.direction()) {
-                Ok(Some(identity)) => Some(Ok((*identity.id(), lvl))),
-                Ok(None) => None,
-                Err(e) => Some(Err(anyhow!(
-                    "error while searching by id in level {}: {}",
-                    lvl,
-                    e
-                ))),
-            })
-            .collect();
-
-        let candidates = candidates?;
+        let ctx = IrrevocableContext::new(&span, "base_node_context");
 
         tracing::trace!(
-            "found {} candidates across levels 0-{}",
-            candidates.len(),
-            req.level()
+            "creating BaseNode with id {:?}, mem_vec {:?}",
+            core.id(),
+            core.mem_vec()
         );
 
-        // Filter candidates based on the direction
-        let result = match req.direction() {
-            Direction::Left => {
-                // In the left direction, the result is the smallest identifier that is greater than or equal to the target
-                candidates
-                    .into_iter()
-                    .filter(|(id, _)| id >= req.target())
-                    .min_by_key(|(id, _)| *id)
-            }
-            Direction::Right => {
-                // In the right direction, the result is the greatest identifier that is less than or equal to the target
-                candidates
-                    .into_iter()
-                    .filter(|(id, _)| id <= req.target())
-                    .max_by_key(|(id, _)| *id)
-            }
+        let node = BaseNode {
+            core,
+            net,
+            span: span.clone(),
+            ctx,
+            ch: Arc::new(Mutex::new(None)),
         };
 
-        match result {
-            Some((id, level)) => {
-                // If a candidate is found, return it
-                let search_result = IdSearchRes::new(*req.target(), level, id);
-                tracing::trace!(
-                    "search successful: found match {:?} at level {}",
-                    id,
-                    level
-                );
-                Ok(search_result)
-            }
-            None => {
-                // No valid neighbors were found at any level. As specified in
-                // Aspnes & Shah's skip graph design, the search must fall back
-                // to the caller's own identifier at level 0. See
-                // `search_fallback_test.rs` for edge-case validation.
-                tracing::trace!(
-                    "search fallback: no valid candidates found, returning own identifier {:?}",
-                    self.get_identifier()
-                );
-                Ok(IdSearchRes::new(
-                    *req.target(),
-                    0,
-                    *self.get_identifier(),
-                ))
-            }
+        let processor = MessageProcessor::new(Box::new(node.clone()));
+
+        tracing::trace!(
+            "registering BaseNode {:?} as event processor in network",
+            node.core.id()
+        );
+
+        if let Err(e) = clone_net.register_processor(processor) {
+            let error = anyhow!("could not register node in network: {}", e);
+            node.ctx.throw_irrecoverable(error);
         }
+
+        tracing::trace!(
+            "successfully created and registered BaseNode {:?}",
+            node.core.id()
+        );
+
+        Ok(node)
     }
 
-    fn search_by_mem_vec(
-        &self,
-        _req: &IdSearchReq,
-    ) -> anyhow::Result<IdSearchRes> {
-        todo!()
+    /// Returns the node's identifier (delegated to core).
+    #[allow(dead_code)]
+    pub(crate) fn id(&self) -> &Identifier {
+        self.core.id()
     }
 
-    fn join(&self, _introducer: Identifier) -> anyhow::Result<()> {
-        todo!()
+    /// Returns the node's membership vector (delegated to core).
+    #[allow(dead_code)]
+    pub(crate) fn mem_vec(&self) -> &MembershipVector {
+        self.core.mem_vec()
     }
 }
 
@@ -180,30 +97,52 @@ impl EventProcessorCore for BaseNode {
 
         match event {
             IdSearchRequest(req) => {
-                let span = tracing::trace_span!("search_by_id_request", origin = ?origin_id, target = ?req.target(), direction = ?req.direction(), level = ?req.level());
+                let span = tracing::trace_span!(
+                    "search_by_id_request",
+                    origin = ?origin_id,
+                    target = ?req.target(),
+                    direction = ?req.direction(),
+                    level = ?req.level()
+                );
                 let _enter = span.enter();
                 tracing::trace!("received request");
 
-                let res = self.search_by_id(&req).map_err(|e| anyhow!("failed to perform search by id {}", e))?;
+                let res = self
+                    .core
+                    .search_by_id(&req)
+                    .map_err(|e| anyhow!("failed to perform search by id {}", e))?;
                 let response_event = IdSearchResponse(res);
 
-                let span = tracing::trace_span!("terminating", result = ?res.result(), termination_level = ?res.termination_level());
+                let span = tracing::trace_span!(
+                    "terminating",
+                    result = ?res.result(),
+                    termination_level = ?res.termination_level()
+                );
                 let _enter = span.enter();
 
-                if res.result() == self.get_identifier() {
-                    self.net.send_event(*req.origin(), response_event).map_err(|e| anyhow!("failed to send response event for search by id: {}", e))?;
+                if res.result() == self.core.id() {
+                    self.net.send_event(*req.origin(), response_event).map_err(|e| {
+                        anyhow!("failed to send response event for search by id: {}", e)
+                    })?;
                     tracing::info!("found self in search by id for, terminated the search result");
-                    return Ok(())
+                    return Ok(());
                 }
 
-                let relay_request = IdSearchRequest(IdSearchReq::new(*req.origin(), *req.target(), res.termination_level(), req.direction()));
-                self.net.send_event(*res.result(), relay_request).map_err(|e| anyhow!("failed to send relay response event for search by id: {}", e))?;
+                let relay_request = IdSearchRequest(crate::core::IdSearchReq::new(
+                    *req.origin(),
+                    *req.target(),
+                    res.termination_level(),
+                    req.direction(),
+                ));
+                self.net.send_event(*res.result(), relay_request).map_err(|e| {
+                    anyhow!("failed to send relay response event for search by id: {}", e)
+                })?;
                 tracing::info!("relayed search by id request to the next node");
                 Ok(())
             }
             IdSearchResponse(res) => {
-                // Handle the response (e.g., update state, notify waiting tasks, etc.)
-                // For now, we just log it.
+                // TODO: wire to the originator waiter slot (`self.ch`) in
+                // Phase B. For now, just log and drop.
                 tracing::trace!(
                     "received IdSearchResponse: target {:?}, result {:?}, level {}",
                     res.target(),
@@ -220,92 +159,33 @@ impl EventProcessorCore for BaseNode {
     }
 }
 
-impl BaseNode {
-    /// Create a new `BaseNode` with the provided identifier, membership vector
-    /// and lookup table.
-    #[cfg(test)] // TODO: Remove once BaseNode is used in production code.
-    pub(crate) fn new(
-        parent_span: Span,
-        id: Identifier,
-        mem_vec: MembershipVector,
-        lt: Box<dyn LookupTable>,
-        net: Box<dyn Network>,
-    ) -> anyhow::Result<Self> {
-        let clone_net = net.clone();
-        let span = tracing::span!(parent: parent_span, tracing::Level::TRACE, "base_node");
-        let _enter = span.enter();
-        
-        // Create a cancelable context for this node
-        let ctx = IrrevocableContext::new(&span, "base_node_context");
-        
-        tracing::trace!(
-            "creating BaseNode with id {:?}, mem_vec {:?}",
-            id,
-            mem_vec
-        );
-
-        let node = BaseNode {
-            id,
-            mem_vec,
-            lt,
-            net,
-            span: span.clone(),
-            ctx,
-            ch: Arc::new(Mutex::new(None)),
-        };
-
-        // Create a MessageProcessor from this node, instead of casting directly
-        let processor = MessageProcessor::new(Box::new(node.clone()));
-        
-        tracing::trace!(
-            "registering BaseNode {:?} as event processor in network",
-            id
-        );
-
-        // Use throw_irrecoverable for critical startup failures
-        if let Err(e) = clone_net.register_processor(processor) {
-            let error = anyhow!("could not register node in network: {}", e);
-            node.ctx.throw_irrecoverable(error);
-        }
-
-        tracing::trace!(
-            "successfully created and registered BaseNode {:?}",
-            id
-        );
-
-        Ok(node)
-    }
-}
-
-/// Implementing PartialEq for BaseNode to compare the id and membership vector.
-/// This basically supports == operator for BaseNode.
-/// The cardinal assumption is that the id and membership vector are unique for each node.
+/// Two `BaseNode`s are equal if their core's id and membership vector match.
+/// Network, context, and waiter slot are ignored.
 impl PartialEq for BaseNode {
     fn eq(&self, other: &Self) -> bool {
-        self.id == other.id && self.mem_vec == other.mem_vec
-        // ignore lt and ctx for equality check as comparing trait objects is non-trivial
+        self.core.id() == other.core.id() && self.core.mem_vec() == other.core.mem_vec()
     }
 }
 
 impl fmt::Debug for BaseNode {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         f.debug_struct("BaseNode")
-            .field("id", &self.id)
-            .field("mem_vec", &self.mem_vec)
+            .field("id", self.core.id())
+            .field("mem_vec", self.core.mem_vec())
             .finish()
     }
 }
 
 impl Clone for BaseNode {
     fn clone(&self) -> Self {
+        // Shallow clone: cloned instances share the same underlying core,
+        // network, and waiter slot via Arc-backed boxes.
         BaseNode {
-            id: self.id,
-            mem_vec: self.mem_vec,
-            lt: self.lt.clone(),
+            core: self.core.clone(),
             net: self.net.clone(),
             span: self.span.clone(),
             ctx: self.ctx.clone(),
-            ch:  self.ch.clone(),
+            ch: self.ch.clone(),
         }
     }
 }
@@ -317,8 +197,9 @@ mod tests {
         random_identifier, random_membership_vector, span_fixture,
     };
     use crate::core::ArrayLookupTable;
-    use unimock::*;
     use crate::network::NetworkMock;
+    use crate::node::core::BaseCore;
+    use unimock::*;
 
     #[test]
     fn test_base_node() {
@@ -335,8 +216,15 @@ mod tests {
                 .answers(&|mock| Box::new(mock.clone())),
         ));
 
-        let node = BaseNode::new(span.clone(), id, mem_vec, Box::new(ArrayLookupTable::new(&span)), Box::new(mock_net)).unwrap();
-        assert_eq!(node.get_identifier(), &id);
-        assert_eq!(node.get_membership_vector(), &mem_vec);
+        let core = Box::new(BaseCore::new(
+            span.clone(),
+            id,
+            mem_vec,
+            Box::new(ArrayLookupTable::new(&span)),
+        ));
+
+        let node = BaseNode::new(span.clone(), core, Box::new(mock_net)).unwrap();
+        assert_eq!(node.id(), &id);
+        assert_eq!(node.mem_vec(), &mem_vec);
     }
 }

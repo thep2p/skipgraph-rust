@@ -4,10 +4,10 @@ use crate::core::model::identity::Identity;
 use crate::core::testutil::fixtures::{
     random_membership_vector, random_sorted_identifiers, span_fixture,
 };
-use crate::core::{Address, ArrayLookupTable, IdSearchReq, Identifier, LookupTable, MembershipVector, LOOKUP_TABLE_LEVELS};
+use crate::core::{Address, ArrayLookupTable, Identifier, LookupTable, MembershipVector, LOOKUP_TABLE_LEVELS};
 use crate::network::mock::hub::NetworkHub;
 use crate::network::Network;
-use crate::node::Node;
+use crate::node::core::BaseCore;
 
 struct LocalSkipGraph {
     nodes: Vec<BaseNode>,
@@ -38,13 +38,8 @@ impl LocalSkipGraph {
             let mem_vec = random_membership_vector();
             let lt: Box<dyn LookupTable> = Box::new(ArrayLookupTable::new(&span_fixture()));
             let network = NetworkHub::new_mock_network(hub.clone(), id)?;
-            let node = BaseNode::new(
-                span_fixture(),
-                id,
-                mem_vec,
-                lt.clone(),
-                network.clone_box(),
-            )?;
+            let core = Box::new(BaseCore::new(span_fixture(), id, mem_vec, lt.clone()));
+            let node = BaseNode::new(span_fixture(), core, network.clone_box())?;
             nodes.push(node);
             lts.push(lt);
         }
@@ -53,13 +48,13 @@ impl LocalSkipGraph {
         // a previous node and the last node does not have a next node.
         for (n_pair, lt_pair) in nodes.windows(2).zip(lts.windows(2)) {
             let this_id = Identity::new(
-                n_pair[1].get_identifier(),
-                n_pair[1].get_membership_vector(),
+                n_pair[1].id(),
+                n_pair[1].mem_vec(),
                 Address::new("localhost", "0"),
             );
             let prev_id = Identity::new(
-                n_pair[0].get_identifier(),
-                n_pair[0].get_membership_vector(),
+                n_pair[0].id(),
+                n_pair[0].mem_vec(),
                 Address::new("localhost", "0"),
             );
 
@@ -75,9 +70,9 @@ impl LocalSkipGraph {
                 // moves leftward to find a neighbor at the given level
                 for j in (0..=loop_start).rev() {
                     // Invariant: loop_start < i, so j < i throughout — no self-link possible.
-                    if nodes[i].get_membership_vector().common_prefix_bit(nodes[j].get_membership_vector()) >= level {
-                        let id_j = Identity::new(nodes[j].get_identifier(), nodes[j].get_membership_vector(), Address::new("localhost", "0"));
-                        let id_i = Identity::new(nodes[i].get_identifier(), nodes[i].get_membership_vector(), Address::new("localhost", "0"));
+                    if nodes[i].mem_vec().common_prefix_bit(nodes[j].mem_vec()) >= level {
+                        let id_j = Identity::new(nodes[j].id(), nodes[j].mem_vec(), Address::new("localhost", "0"));
+                        let id_i = Identity::new(nodes[i].id(), nodes[i].mem_vec(), Address::new("localhost", "0"));
                         lts[i].update_entry(id_j, level, Direction::Left)?;
                         lts[j].update_entry(id_i, level, Direction::Right)?;
                         neighbor_idx = Some(j);
@@ -95,7 +90,7 @@ impl LocalSkipGraph {
         }
 
 
-        let mvs = nodes.iter().map(|n| *n.get_membership_vector()).collect();
+        let mvs = nodes.iter().map(|n| *n.mem_vec()).collect();
         Ok(LocalSkipGraph{
             nodes,
             lts,
@@ -117,13 +112,13 @@ fn test_lookup_tables_validity() {
             // find the max j < i: common_prefix_bit(m_i, m_j) ≥ level
             let expected_left: Option<usize> = (0..i).rev().find(|&j| sg.mvs[i].common_prefix_bit(&sg.mvs[j])>= level);
 
-            let expected_left_neighbor_id = expected_left.map(|j| *sg.nodes[j].get_identifier());
+            let expected_left_neighbor_id = expected_left.map(|j| *sg.nodes[j].id());
             let actual_left_neighbor_id = lt.get_entry(level, Direction::Left).expect("get_entry should never error").map(|identity| *identity.id());
             assert_eq!(actual_left_neighbor_id, expected_left_neighbor_id, "left lookup table entry is not valid");
 
             // find the min j > i: common_prefix_bit(m_i, m_j) >= level
             let expected_right: Option<usize> = (i + 1..sg.nodes.len()).find(|&j| sg.mvs[i].common_prefix_bit(&sg.mvs[j]) >= level);
-            let expected_right_neighbor_id = expected_right.map(|j| *sg.nodes[j].get_identifier());
+            let expected_right_neighbor_id = expected_right.map(|j| *sg.nodes[j].id());
             let actual_right_neighbor_id = lt.get_entry(level, Direction::Right).expect("get_entry should never error").map(|identity| *identity.id());
             assert_eq!(actual_right_neighbor_id, expected_right_neighbor_id, "right lookup table entry is not valid");
         }
@@ -137,11 +132,6 @@ fn test_skip_graph_edge_cases() {
     assert_eq!(sg.identifiers.len(), 1);
     assert_eq!(sg.mvs.len(), 1);
     assert_eq!(sg.lts.len(), 1);
-
-    let search_req = IdSearchReq::new(*sg.nodes[0].get_identifier(), *sg.nodes[0].get_identifier(), 0, Direction::Left);
-    sg.nodes[0]
-        .search_by_id(&search_req)
-        .expect("single node should be able to search for itself");
 
     assert!(LocalSkipGraph::new(0).is_err(), "creating an empty skip graph should fail");
 }
