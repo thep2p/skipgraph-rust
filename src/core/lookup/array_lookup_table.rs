@@ -6,7 +6,6 @@ use anyhow::anyhow;
 use parking_lot::RwLock;
 use std::fmt::{Debug, Formatter};
 use std::sync::Arc;
-use tracing::{Level, Span};
 
 /// The number of levels in the lookup table is determined by the size of the identifier in bits (that is
 /// `IDENTIFIER_SIZE_BYTES * 8`).
@@ -52,6 +51,12 @@ impl Debug for ArrayLookupTable {
             writeln!(f, "Level: {i}, Left: {l:?}, Right: {r:?}")?;
         }
         write!(f, "}}")
+    }
+}
+
+impl Default for ArrayLookupTable {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
