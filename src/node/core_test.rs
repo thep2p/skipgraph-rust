@@ -22,7 +22,7 @@ fn make_core(id: Identifier, lt: Box<dyn LookupTable>) -> BaseCore {
 #[test]
 fn test_search_by_id_singleton_fallback() {
     let origin_id = Identifier::from_bytes(&[10u8]).unwrap();
-    let core = make_core(origin_id, Box::new(ArrayLookupTable::new(&span_fixture())));
+    let core = make_core(origin_id, Box::new(ArrayLookupTable::new()));
 
     let cases = [
         (Identifier::from_bytes(&[5u8]).unwrap(), Direction::Left),
@@ -118,7 +118,7 @@ fn test_search_by_id_not_found_left_direction() {
     let target = random_identifier();
 
     for lvl in 0..LOOKUP_TABLE_LEVELS {
-        let lt = ArrayLookupTable::new(&span_fixture());
+        let lt = ArrayLookupTable::new();
         for fill_lvl in 0..LOOKUP_TABLE_LEVELS {
             lt.update_entry(
                 Identity::new(
@@ -148,7 +148,7 @@ fn test_search_by_id_not_found_right_direction() {
     let target = random_identifier();
 
     for lvl in 0..LOOKUP_TABLE_LEVELS {
-        let lt = ArrayLookupTable::new(&span_fixture());
+        let lt = ArrayLookupTable::new();
         for fill_lvl in 0..LOOKUP_TABLE_LEVELS {
             lt.update_entry(
                 Identity::new(

@@ -1,12 +1,13 @@
-use crate::core::{IdSearchRes, IrrevocableContext, Identifier, MembershipVector};
+use crate::core::{IdSearchReq, IdSearchRes, Identifier, IrrevocableContext, MembershipVector};
+use crate::network::Event::{IdSearchRequest, IdSearchResponse};
 #[cfg(test)] // TODO: Remove once BaseNode is used in production code.
 use crate::network::MessageProcessor;
-use crate::network::Event::{IdSearchRequest, IdSearchResponse};
 use crate::network::{Event, EventProcessorCore, Network};
 use crate::node::core::Core;
 use anyhow::anyhow;
 use std::fmt;
 use std::fmt::Formatter;
+use std::sync::mpsc::sync_channel;
 use std::sync::{mpsc::SyncSender, Arc, Mutex};
 use tracing::Span;
 
@@ -38,16 +39,10 @@ impl BaseNode {
         net: Box<dyn Network>,
     ) -> anyhow::Result<Self> {
         let clone_net = net.clone();
-        let span = tracing::span!(parent: parent_span, tracing::Level::TRACE, "base_node");
+        let span = tracing::span!(parent: &parent_span, tracing::Level::TRACE, "base_node", id = ?core.id(), mem_vec = ?core.mem_vec());
         let _enter = span.enter();
 
         let ctx = IrrevocableContext::new(&span, "base_node_context");
-
-        tracing::trace!(
-            "creating BaseNode with id {:?}, mem_vec {:?}",
-            core.id(),
-            core.mem_vec()
-        );
 
         let node = BaseNode {
             core,
@@ -59,20 +54,12 @@ impl BaseNode {
 
         let processor = MessageProcessor::new(Box::new(node.clone()));
 
-        tracing::trace!(
-            "registering BaseNode {:?} as event processor in network",
-            node.core.id()
-        );
-
         if let Err(e) = clone_net.register_processor(processor) {
             let error = anyhow!("could not register node in network: {}", e);
             node.ctx.throw_irrecoverable(error);
         }
 
-        tracing::trace!(
-            "successfully created and registered BaseNode {:?}",
-            node.core.id()
-        );
+        tracing::trace!("successfully created and registered node");
 
         Ok(node)
     }
@@ -88,12 +75,53 @@ impl BaseNode {
     pub(crate) fn mem_vec(&self) -> &MembershipVector {
         self.core.mem_vec()
     }
+
+    #[allow(dead_code)]
+    pub(crate) fn search_by_id(&self, req: &IdSearchReq) -> anyhow::Result<IdSearchRes> {
+        let span =
+            tracing::trace_span!("search_by_id", target = ?req.target(), level = ?req.level());
+        let _enter = span.enter();
+
+        tracing::trace!("searching for target {:?}", req.target());
+        let local_res = self
+            .core
+            .search_by_id(req)
+            .map_err(|e| anyhow!("failed to perform search by id {}", e))?;
+        if local_res.result() == self.core.id() {
+            tracing::trace!("found self in search by id, terminating the search result");
+            return Ok(local_res);
+        }
+
+        let (tx, rx) = sync_channel::<IdSearchRes>(1);
+        {
+            let mut slot = self.ch.lock().expect("mutex was poisoned by a previous panic");
+            *slot = Some(tx);
+        }
+        let relay_request = IdSearchRequest(IdSearchReq::new(
+            *self.core.id(),
+            *req.target(),
+            local_res.termination_level(),
+            req.direction(),
+        ));
+        self.net
+            .send_event(*local_res.result(), relay_request)
+            .map_err(|e| anyhow!("failed to send relay request for search by id: {}", e))?;
+        tracing::info!("relayed search by id request to the next node, pending response");
+        let net_result = rx
+            .recv()
+            .map_err(|_| anyhow!("failed to receive response for search by id"))?;
+        tracing::info!(
+            "received network response for search by id {:?}: {:?}",
+            *req.target(),
+            net_result.result()
+        );
+        Ok(net_result)
+    }
 }
 
 impl EventProcessorCore for BaseNode {
     fn process_incoming_event(&self, origin_id: Identifier, event: Event) -> anyhow::Result<()> {
         let _enter = self.span.enter();
-        tracing::trace!("processing incoming event with target_node_id");
 
         match event {
             IdSearchRequest(req) => {
@@ -111,7 +139,6 @@ impl EventProcessorCore for BaseNode {
                     .core
                     .search_by_id(&req)
                     .map_err(|e| anyhow!("failed to perform search by id {}", e))?;
-                let response_event = IdSearchResponse(res);
 
                 let span = tracing::trace_span!(
                     "terminating",
@@ -121,10 +148,12 @@ impl EventProcessorCore for BaseNode {
                 let _enter = span.enter();
 
                 if res.result() == self.core.id() {
-                    self.net.send_event(*req.origin(), response_event).map_err(|e| {
-                        anyhow!("failed to send response event for search by id: {}", e)
-                    })?;
-                    tracing::info!("found self in search by id for, terminated the search result");
+                    self.net
+                        .send_event(*req.origin(), IdSearchResponse(res))
+                        .map_err(|e| {
+                            anyhow!("failed to send response event for search by id: {}", e)
+                        })?;
+                    tracing::info!("found self in search by id, terminated the search result");
                     return Ok(());
                 }
 
@@ -134,21 +163,38 @@ impl EventProcessorCore for BaseNode {
                     res.termination_level(),
                     req.direction(),
                 ));
-                self.net.send_event(*res.result(), relay_request).map_err(|e| {
-                    anyhow!("failed to send relay response event for search by id: {}", e)
-                })?;
+                self.net
+                    .send_event(*res.result(), relay_request)
+                    .map_err(|e| {
+                        anyhow!(
+                            "failed to send relay response event for search by id: {}",
+                            e
+                        )
+                    })?;
                 tracing::info!("relayed search by id request to the next node");
                 Ok(())
             }
             IdSearchResponse(res) => {
-                // TODO: wire to the originator waiter slot (`self.ch`) in
-                // Phase B. For now, just log and drop.
-                tracing::trace!(
-                    "received IdSearchResponse: target {:?}, result {:?}, level {}",
-                    res.target(),
-                    res.result(),
-                    res.termination_level()
+                let span = tracing::trace_span!(
+                    "search_by_id_response",
+                    origin = ?origin_id,
+                    target = ?res.target(),
+                    result = ?res.result(),
+                    termination_level = ?res.termination_level()
                 );
+                let _enter = span.enter();
+
+                let waiter = self
+                    .ch
+                    .lock()
+                    .expect("mutex was poisoned by a previous panic")
+                    .take();
+                if let Some(tx) = waiter {
+                    if let Err(e) = tx.send(res) {
+                        tracing::warn!("failed to send the response to the receiver end: {:?}", e)
+                    }
+                }
+
                 Ok(())
             }
             _ => {
@@ -220,7 +266,7 @@ mod tests {
             span.clone(),
             id,
             mem_vec,
-            Box::new(ArrayLookupTable::new(&span)),
+            Box::new(ArrayLookupTable::new()),
         ));
 
         let node = BaseNode::new(span.clone(), core, Box::new(mock_net)).unwrap();

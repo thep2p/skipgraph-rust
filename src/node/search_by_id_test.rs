@@ -72,8 +72,8 @@ fn test_search_by_id_networking_integration_relay() {
         random_membership_vector(),
         Box::new(lt.clone()),
     ));
-    let node = BaseNode::new(span_fixture(), core, Box::new(mock_net))
-        .expect("failed to create BaseNode");
+    let node =
+        BaseNode::new(span_fixture(), core, Box::new(mock_net)).expect("failed to create BaseNode");
 
     let origin_id = random_identifier();
     node.process_incoming_event(origin_id, request_event)
@@ -102,8 +102,15 @@ fn test_search_by_id_networking_integration_target_is_this_node() {
             .answers_arc(Arc::new(
                 move |_, id: Identifier, event: Event| match event {
                     Event::IdSearchResponse(res) => {
-                        assert_eq!(id, origin_id, "expected result to be to the originator's identifier");
-                        assert_eq!(*res.result(), node_id, "expected result to be the node's identifier");
+                        assert_eq!(
+                            id, origin_id,
+                            "expected result to be to the originator's identifier"
+                        );
+                        assert_eq!(
+                            *res.result(),
+                            node_id,
+                            "expected result to be the node's identifier"
+                        );
                         Ok(())
                     }
                     _ => panic!("expected IdSearchResponse payload, got: {:?}", event),
@@ -121,8 +128,8 @@ fn test_search_by_id_networking_integration_target_is_this_node() {
         random_membership_vector(),
         Box::new(lt.clone()),
     ));
-    let node = BaseNode::new(span_fixture(), core, Box::new(mock_net))
-        .expect("failed to create BaseNode");
+    let node =
+        BaseNode::new(span_fixture(), core, Box::new(mock_net)).expect("failed to create BaseNode");
 
     let outer_origin_id = random_identifier();
     node.process_incoming_event(outer_origin_id, request_event)

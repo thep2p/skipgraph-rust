@@ -63,7 +63,7 @@ impl BaseCore {
         mem_vec: MembershipVector,
         lt: Box<dyn LookupTable>,
     ) -> Self {
-        let span = tracing::span!(parent: parent_span, tracing::Level::TRACE, "base_core");
+        let span = tracing::span!(parent: &parent_span, tracing::Level::TRACE, "base_core", id = ?id, mem_vec = ?mem_vec);
         BaseCore {
             id,
             mem_vec,
@@ -96,13 +96,14 @@ impl Core for BaseCore {
     }
 
     fn search_by_id(&self, req: &IdSearchReq) -> anyhow::Result<IdSearchRes> {
-        let _enter = self.span.enter();
-        tracing::trace!(
-            "starting search_by_id for target {:?}, direction {:?}, max_level {}",
-            req.target(),
-            req.direction(),
-            req.level()
+        let span = tracing::trace_span!(
+            parent: &self.span,
+            "search_by_id_req",
+            target = ?req.target(),
+            dir = ?req.direction(),
+            level = ?req.level()
         );
+        let _enter = span.enter();
 
         // Collect neighbors from levels <= req.level in req.direction
         let candidates: Result<Vec<_>, _> = (0..=req.level())
@@ -146,11 +147,7 @@ impl Core for BaseCore {
         match result {
             Some((id, level)) => {
                 let search_result = IdSearchRes::new(*req.target(), level, id);
-                tracing::trace!(
-                    "search successful: found match {:?} at level {}",
-                    id,
-                    level
-                );
+                tracing::trace!("search successful: found match {:?} at level {}", id, level);
                 Ok(search_result)
             }
             None => {

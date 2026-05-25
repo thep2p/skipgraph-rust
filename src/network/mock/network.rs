@@ -1,3 +1,4 @@
+use std::sync::Arc;
 use crate::network::mock::hub::NetworkHub;
 use crate::network::{Event, MessageProcessor, Network};
 use anyhow::{anyhow, Context};
@@ -11,7 +12,7 @@ use crate::core::Identifier;
 /// where the struct can be safely shared via Arc<MockNetwork> without external locking.
 /// MessageProcessor is inherently thread-safe, so we only need a simple Option wrapper.
 pub struct MockNetwork {
-    core: RwLock<InnerMockNetwork>,
+    core: Arc<RwLock<InnerMockNetwork>>,
 }
 
 struct InnerMockNetwork {
@@ -24,11 +25,11 @@ impl MockNetwork {
     /// Creates a new instance of MockNetwork with the given NetworkHub.
     pub fn new(id: Identifier, hub: NetworkHub) -> Self {
         MockNetwork {
-            core: RwLock::new(InnerMockNetwork {
+            core: Arc::new(RwLock::new(InnerMockNetwork {
                 hub,
                 processor: None,
                 id,
-            }),
+            })),
         }
     }
 
@@ -53,13 +54,8 @@ impl MockNetwork {
 
 impl Clone for MockNetwork {
     fn clone(&self) -> Self {
-        let core_guard = self.core.read();
         MockNetwork {
-            core: RwLock::new(InnerMockNetwork {
-                hub: core_guard.hub.clone(),
-                processor: core_guard.processor.clone(), // Share processor state between clones
-                id: core_guard.id,
-            }),
+            core: self.core.clone(),
         }
     }
 }
@@ -71,7 +67,7 @@ impl Network for MockNetwork {
         
         core_guard.hub
             .route_event(core_guard.id, target_id, event)
-            .context("failed to route event")
+            .map_err(|e| anyhow!("failed to route event: {}", e))
     }
 
     /// Registers an event processor to handle incoming events.

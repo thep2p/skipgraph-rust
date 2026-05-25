@@ -145,7 +145,8 @@ impl MembershipVector {
 
 impl Display for MembershipVector {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", hex::encode(self.0))
+        // for sake of logging, we only show the first 8 bytes of the membership vector.
+        write!(f, "{}", &hex::encode(self.0).chars().take(8).collect::<String>())
     }
 }
 

@@ -285,11 +285,10 @@ pub fn random_identities(n: usize) -> Vec<Identity> {
 /// # Dependencies
 /// This code relies on the following external functions and structures:
 /// - `ArrayLookupTable::new` to initialize the lookup table.
-/// - `span_fixture()` to provide the necessary reference for lookup table creation.
 /// - `random_identities` to generate a vector of random identifiers.
 /// - `Direction` enum (likely defines `Left` and `Right` directions).
 pub fn random_lookup_table(n: usize) -> ArrayLookupTable {
-    let lt = ArrayLookupTable::new(&span_fixture());
+    let lt = ArrayLookupTable::new();
     let ids = random_identities(2 * n);
     for i in 0..n {
         lt.update_entry(ids[i], i, Direction::Left).unwrap();
@@ -416,11 +415,12 @@ pub fn span_fixture() -> tracing::Span {
     // Initialize the global tracing subscriber for logging output.
     // Using `try_init()` ensures that initialization happens only once globally,
     // avoiding panics on repeated calls (e.g., in multiple tests or repeated fixture usage).
-    // Setting the max level to DEBUG enables debug-level logs to be captured and displayed.
+    // Setting the max level to TRACE enables debug-level logs to be captured and displayed.
     // This setup is necessary for `tracing::debug!` macros to produce visible output during tests or runtime.
     let _ = tracing_subscriber::fmt()
         // Change the subscriber to use a custom format if needed
-        .with_max_level(tracing::Level::DEBUG)
+        .with_max_level(tracing::Level::TRACE)
+        .with_target(false)// Remove the target from the log output
         .try_init();
 
     // Create a new tracing span with the name "test_span" at TRACE level.
