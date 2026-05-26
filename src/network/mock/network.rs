@@ -7,9 +7,7 @@ use crate::core::Identifier;
 
 /// MockNetwork is a mock implementation of the Network trait for testing purposes.
 /// It does not perform any real network operations but simulates event routing and processing through a `NetworkHub`.
-/// 
-/// Thread-safety is handled internally using Mutex for the processor, following a Go-like approach
-/// where the struct can be safely shared via Arc<MockNetwork> without external locking.
+///
 /// MessageProcessor is inherently thread-safe, so we only need a simple Option wrapper.
 pub struct MockNetwork {
     core: Arc<RwLock<InnerMockNetwork>>,
