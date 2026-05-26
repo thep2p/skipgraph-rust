@@ -419,7 +419,7 @@ pub fn span_fixture() -> tracing::Span {
     // This setup is necessary for `tracing::debug!` macros to produce visible output during tests or runtime.
     let _ = tracing_subscriber::fmt()
         // Change the subscriber to use a custom format if needed
-        .with_max_level(tracing::Level::TRACE)
+        .with_max_level(tracing::Level::DEBUG)
         .with_target(false)// Remove the target from the log output
         .try_init();
 

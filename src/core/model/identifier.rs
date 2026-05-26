@@ -158,8 +158,7 @@ impl Identifier {
 impl Display for Identifier {
     /// Converts the Identifier into a base hex string.
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        // for sake of logging, we only show the first 8 characters of the hex string.
-        write!(f, "{}", &hex::encode(self.0).chars().take(8).collect::<String>())
+        write!(f, "{}", &hex::encode(self.0))
     }
 }
 
