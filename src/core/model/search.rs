@@ -75,6 +75,7 @@ impl IdSearchReq {
 /// for debugging purposes.
 #[derive(Debug, Copy, Clone)]
 pub struct IdSearchRes {
+    request_id: RequestId,
     target: Identifier,
     termination_level: LookupTableLevel,
     result: Identifier,
@@ -93,8 +94,9 @@ impl IdSearchRes {
     ///
     /// Returns a new `IdentifierSearchResult` instance populated with the provided `target`, `level`,
     /// and `result` parameters.
-    pub fn new(target: Identifier, level: LookupTableLevel, result: Identifier) -> Self {
+    pub fn new(request_id: RequestId, target: Identifier, level: LookupTableLevel, result: Identifier) -> Self {
         IdSearchRes {
+            request_id,
             target,
             termination_level: level,
             result,
@@ -114,5 +116,10 @@ impl IdSearchRes {
     /// Returns the result of the search operation at the current node.
     pub fn result(&self) -> &Identifier {
         &self.result
+    }
+    
+    /// Returns the request id of the search, the unique id that identifies the search request across all nodes.
+    pub fn request_id(&self) -> RequestId {
+        self.request_id
     }
 }
