@@ -2,8 +2,22 @@ use crate::core::lookup::LookupTableLevel;
 use crate::core::model::direction::Direction;
 use crate::core::Identifier;
 
+#[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
+pub struct RequestId {
+    id: u128,
+}
+
+impl RequestId {
+    pub fn random() -> Self {
+        RequestId {
+            id: rand::random::<u128>(),
+        }
+    }
+}
+
 #[derive(Debug, Copy, Clone)]
 pub struct IdSearchReq {
+    req_id: RequestId,
     target: Identifier,
     origin: Identifier,
     level: LookupTableLevel,
@@ -11,8 +25,15 @@ pub struct IdSearchReq {
 }
 
 impl IdSearchReq {
-    pub fn new(origin: Identifier, target: Identifier, level: LookupTableLevel, direction: Direction) -> Self {
+    pub fn new(
+        req_id: RequestId,
+        origin: Identifier,
+        target: Identifier,
+        level: LookupTableLevel,
+        direction: Direction,
+    ) -> Self {
         IdSearchReq {
+            req_id,
             target,
             origin,
             level,
@@ -34,6 +55,10 @@ impl IdSearchReq {
 
     pub fn origin(&self) -> &Identifier {
         &self.origin
+    }
+
+    pub fn req_id(&self) -> RequestId {
+        self.req_id
     }
 }
 

@@ -10,6 +10,7 @@ use std::fmt::Formatter;
 use std::sync::mpsc::sync_channel;
 use std::sync::{mpsc::SyncSender, Arc, Mutex};
 use tracing::Span;
+use crate::core::model::search::RequestId;
 
 // TODO: Remove #[allow(dead_code)] once BaseNode is used in production code.
 #[allow(dead_code)]
@@ -98,6 +99,7 @@ impl BaseNode {
             *slot = Some(tx);
         }
         let relay_request = IdSearchRequest(IdSearchReq::new(
+            RequestId::random(), // initiate a new request id, as this is a new search
             *self.core.id(),
             *req.target(),
             local_res.termination_level(),
@@ -157,7 +159,8 @@ impl EventProcessorCore for BaseNode {
                     return Ok(());
                 }
 
-                let relay_request = IdSearchRequest(crate::core::IdSearchReq::new(
+                let relay_request = IdSearchRequest(IdSearchReq::new(
+                    req.req_id(),
                     *req.origin(),
                     *req.target(),
                     res.termination_level(),
