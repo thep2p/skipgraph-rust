@@ -107,9 +107,10 @@ impl BaseNode {
             local_res.termination_level(),
             req.direction(),
         ));
-        self.net
-            .send_event(*local_res.result(), relay_request)
-            .map_err(|e| anyhow!("failed to send relay request for search by id: {}", e))?;
+        if let Err(e) = self.net.send_event(*local_res.result(), relay_request) {
+            self.request_id_map.lock().expect("mutex was poisoned by a previous panic").remove(&req.req_id());
+            return Err(anyhow!("failed to perform search by id {}", e));
+        }
         tracing::info!("relayed search by id request to the next node, pending response");
         let net_result = rx
             .recv()
