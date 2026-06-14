@@ -62,22 +62,15 @@ impl IdSearchReq {
     }
 }
 
-/// A struct representing the result of an identifier search within lookup table of current node.
-///
-/// The `IdentifierSearchResult` struct is composed of three key components:
-/// - The `target` identifier that was searched for in the lookup table of the current node.
-/// - The `termination_level` of the lookup table where the identifier search was terminated at the current node.
-/// - The `result` identifier that was found during the search process at the current node.
-///
-/// # Derives
-///
-/// This struct derives the `Debug` trait, enabling it to be formatted using the `{:?}` formatter
-/// for debugging purposes.
 #[derive(Debug, Copy, Clone)]
 pub struct IdSearchRes {
+    /// The unique identifier of the search request across all nodes (randomly generated).
     request_id: RequestId,
+    /// The identifier that is being searched for.
     target: Identifier,
+    /// The level of the lookup table where the search was terminated at the current node.
     termination_level: LookupTableLevel,
+    /// The identifier that was found during the search process at the current node.
     result: Identifier,
 }
 
