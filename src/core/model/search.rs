@@ -86,13 +86,14 @@ impl IdSearchRes {
     ///
     /// # Parameters
     ///
+    /// - `request_id`: A `RequestId` that uniquely identifies the search request across all nodes (randomly generated).
     /// - `target`: An `Identifier` representing the target element for the search operation in the lookup table of the current node.
     /// - `termination_level`: A `LookupTableLevel` that specifies the lookup level where the search was terminated at the current node.
     /// - `result`: An `Identifier` holding the result of the search operation at the current node.
     ///
     /// # Returns
     ///
-    /// Returns a new `IdentifierSearchResult` instance populated with the provided `target`, `level`,
+    /// Returns a new `IdentifierSearchResult` instance.
     /// and `result` parameters.
     pub fn new(request_id: RequestId, target: Identifier, level: LookupTableLevel, result: Identifier) -> Self {
         IdSearchRes {
