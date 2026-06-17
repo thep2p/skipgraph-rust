@@ -37,7 +37,7 @@ fn test_search_by_id_singleton_fallback() {
             nonce: Nonce::random(),
             origin: origin_id,
             target,
-            level: 0,
+            level: 3,
             direction,
         };
         let res = core.search_by_id(req).expect("search failed");
