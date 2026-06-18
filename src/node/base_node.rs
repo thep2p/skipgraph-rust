@@ -118,15 +118,25 @@ impl BaseNode {
             return Err(anyhow!("failed to perform search by id {}", e));
         }
         tracing::info!("relayed search by id request to the next node, pending response");
-        let net_result = rx
-            .recv()
-            .map_err(|_| anyhow!("failed to receive response for search by id"))?;
-        tracing::info!(
-            "received network response for search by id {:?}: {:?}",
-            req.target,
-            net_result.result
-        );
-        Ok(net_result)
+        match rx.recv() {
+            Ok(net_result) => {
+                tracing::info!(
+                    "received network response for search by id {:?}: {:?}",
+                    req.target,
+                    net_result.result
+                );
+                Ok(net_result)
+            }
+            Err(_) => {
+                self.request_id_map
+                    .lock()
+                    .expect("mutex was poisoned by a previous panic")
+                    .remove(&req.nonce);
+                Err(anyhow!(
+                    "failed to receive network response for search by id"
+                ))
+            }
+        }
     }
 }
 
