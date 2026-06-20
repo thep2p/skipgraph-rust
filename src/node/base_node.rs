@@ -179,11 +179,8 @@ impl EventProcessorCore for BaseNode {
                 }
 
                 let relay_request = SearchByIdRequest(IdSearchReq {
-                    nonce: req.nonce,
-                    target: req.target,
-                    origin: req.origin,
                     level: res.termination_level,
-                    direction: req.direction,
+                    ..req
                 });
 
                 self.net
